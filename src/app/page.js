@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { ref, set, get } from "firebase/database";
 import { generateRoomCode, makeWordList, ATTACKS } from "@/lib/gameData";
+import TypoLogo from "./icon-web.png"; 
+import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();
@@ -87,17 +89,16 @@ export default function Home() {
     <main className="min-h-screen bg-[#0e0e0e] flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-12">
-          <h1
-            className="text-6xl font-black tracking-widest flex justify-center"
-            style={{ fontFamily: "'Syne',sans-serif" }}
-          >
-            <span className="text-[#e8e0c8]">TYPO</span>
-            <span className="text-[#e8b84b] ml-2">TERROR</span>
-          </h1>
-          <p className="text-[#444] text-xs tracking-[6px] mt-2">
-            REAL-TIME 1v1 TYPING
-          </p>
+        <div className="text-center -mb-12 -mt-16">
+          <div className="flex justify-center">
+            <Image
+              src={TypoLogo}
+              alt="Typo Terror Logo"
+              width={600} // adjust as needed
+              height={200} // adjust as needed
+              priority
+            />
+          </div>
         </div>
 
         {/* Name input */}
