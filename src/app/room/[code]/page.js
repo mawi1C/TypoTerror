@@ -1,8 +1,8 @@
-"use client";
-import { use } from "react";
-import GameRoom from "@/components/GameRoom";
+// src/app/room/[code]/page.js
+import dynamic from "next/dynamic";
+
+const GameRoom = dynamic(() => import("@/components/GameRoom"), { ssr: false });
 
 export default function RoomPage({ params }) {
-  const { code } = use(params);
-  return <GameRoom code={code} />;
+  return <GameRoom code={params.code} />;
 }
