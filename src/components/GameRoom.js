@@ -136,6 +136,7 @@ export default function GameRoom({ code }) {
   const [countdown, setCountdown] = useState(null);
   const [banner, setBanner]       = useState(null);
   const [gamePhase, setPhase]     = useState("lobby");
+  const [mounted, setMounted] = useState(false);  // ← add this line
 
   const inputRef   = useRef(null);
   const startTime  = useRef(null);
@@ -152,11 +153,17 @@ export default function GameRoom({ code }) {
   const words  = room?.words || [];
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const r = sessionStorage.getItem("tb_role");
     const n = sessionStorage.getItem("tb_name");
-    if (!r || !n) { router.push("/"); return; }
+    console.log("SESSION CHECK:", r, n); // ← add this
+    if (!r || !n) { console.log("REDIRECTING: no session"); router.push("/"); return; }
     setRole(r); setMyName(n);
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
     if (!role) return;

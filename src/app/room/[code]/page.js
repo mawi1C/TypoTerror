@@ -1,5 +1,6 @@
 import GameRoomClient from "@/components/GameRoomClient";
 
-export default function RoomPage({ params }) {
-  return <GameRoomClient code={params.code} />;
+export default async function RoomPage({ params }) {
+  const { code } = await params;
+  return <GameRoomClient code={code} />;
 }
