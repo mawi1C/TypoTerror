@@ -556,14 +556,18 @@ export default function Home() {
               </p>
             </Section>
             <Section label="GAME MODES">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <ModeCard icon="⚔" title="1V1" color="#6ee7f7">
                   Race head-to-head against one opponent for <Chip color="#6ee7f7">60 seconds</Chip>.
                   The player who types the most correct words when time runs out wins. Attacks target your opponent only.
                 </ModeCard>
-                <ModeCard icon="💀" title="DEATHMATCH" color="#ff6b6b">
+                <ModeCard icon="💀" title="DEATHMATCH · CLASSIC" color="#ff6b6b">
                   2 to 5 players compete simultaneously. The <span style={{ color: "#e8e0c8" }}>first player</span> to reach <Chip color="#ff6b6b">50 words</Chip> wins instantly.
                   There is no timer — pure speed. Attacks hit every opponent at once.
+                </ModeCard>
+                <ModeCard icon="❤" title="DEATHMATCH · HP" color="#ff6b6b">
+                  2 to 5 players each start with a full <Chip color="#ff6b6b">HP bar</Chip>. Attacks deal damage to all opponents.
+                  The <span style={{ color: "#e8e0c8" }}>last player standing</span> wins — type fast and fire often to survive.
                 </ModeCard>
               </div>
             </Section>
@@ -585,7 +589,7 @@ export default function Home() {
                 ))}
               </div>
             </Section>
-            <Section label="DIFFICULTY VOTE" last>
+            <Section label="DIFFICULTY VOTE">
               <p style={{ fontSize: 15, color: "#888", lineHeight: 2, marginBottom: 20 }}>
                 Before each game, all players vote on the word difficulty.
                 The <span style={{ color: "#e8e0c8" }}>majority wins</span> — ties are broken randomly.
