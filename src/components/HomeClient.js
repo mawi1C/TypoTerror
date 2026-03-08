@@ -91,7 +91,7 @@ function TypingQuote() {
             fontSize: "clamp(13px, 1.5vw, 18px)",
             letterSpacing: "0.22em",
             color: "#e8e0c8",
-            opacity: 0.28,
+            opacity: 0.45, // was 0.28 — too dim against dark bg
             fontWeight: 700,
             userSelect: "none",
             lineHeight: 1.55,
@@ -129,7 +129,6 @@ function AnimatedBackground() {
     const ACCENT = ["#e8b84b","#6ee7f7","#ff6b6b","#6bffb8"];
     const BIG_WORDS = ["TYPE","FAST","WIN","ATTACK","SPEED","WPM","RACE","FIGHT","FIRE","⚡"];
 
-    // Giant ghost words drifting across background
     const bigs = Array.from({ length: 4 }, (_, i) => ({
       word: BIG_WORDS[Math.floor(Math.random() * BIG_WORDS.length)],
       x: (canvas.width / 4) * i + Math.random() * 120,
@@ -141,7 +140,6 @@ function AnimatedBackground() {
       vx: (Math.random() - 0.5) * 0.09,
     }));
 
-    // Glitch lines
     let glitchTimer = 0;
     let glitchLines = [];
 
@@ -149,7 +147,6 @@ function AnimatedBackground() {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Giant ghost words
       bigs.forEach(b => {
         b.pulse += 0.006;
         b.x += b.vx;
@@ -161,7 +158,6 @@ function AnimatedBackground() {
         ctx.fillText(b.word, b.x, b.y);
       });
 
-      // Glitch lines
       glitchTimer--;
       if (glitchTimer <= 0) {
         glitchTimer = 25 + Math.floor(Math.random() * 80);
@@ -272,12 +268,14 @@ export default function Home() {
 
         {/* Name input */}
         <div className="mb-4">
-          <label className="block text-[10px] tracking-[4px] text-[#444] mb-2">YOUR NAME</label>
+          {/* was #444 — boosted to #888 for legibility */}
+          <label className="block text-[10px] tracking-[4px] text-[#888] mb-2">YOUR NAME</label>
           <input
             value={name}
             onChange={(e) => { setName(e.target.value); setError(""); }}
             placeholder="enter username..."
-            className="w-full bg-transparent border border-[#222] px-4 py-3 text-[#e8e0c8] text-sm tracking-widest outline-none focus:border-[#e8b84b] transition-colors"
+            /* border was #222 — now #3a3a3a so it's visible against #0e0e0e */
+            className="w-full bg-transparent border border-[#3a3a3a] px-4 py-3 text-[#e8e0c8] text-sm tracking-widest outline-none focus:border-[#e8b84b] transition-colors placeholder:text-[#4a4a4a]"
             style={{ fontFamily: "'JetBrains Mono',monospace" }}
             maxLength={18}
           />
@@ -285,16 +283,18 @@ export default function Home() {
 
         {/* Mode selector */}
         <div className="mb-5">
-          <label className="block text-[10px] tracking-[4px] text-[#444] mb-2">GAME MODE</label>
+          {/* label: #444 → #888 */}
+          <label className="block text-[10px] tracking-[4px] text-[#888] mb-2">GAME MODE</label>
           <div className="flex gap-2">
             <button
               onClick={() => setMode("1v1")}
               style={{
                 flex: 1, padding: "12px 0", fontSize: 12, letterSpacing: 4,
                 fontFamily: "'JetBrains Mono',monospace", cursor: "pointer", transition: "all 0.15s",
-                background: mode === "1v1" ? "#6ee7f711" : "transparent",
-                border: `1px solid ${mode === "1v1" ? "#6ee7f7" : "#222"}`,
-                color: mode === "1v1" ? "#6ee7f7" : "#444",
+                background: mode === "1v1" ? "#6ee7f718" : "transparent",
+                // inactive border: #222 → #383838; inactive text: #444 → #666
+                border: `1px solid ${mode === "1v1" ? "#6ee7f7" : "#383838"}`,
+                color: mode === "1v1" ? "#6ee7f7" : "#666",
               }}
             >⚔ 1v1</button>
             <button
@@ -302,13 +302,14 @@ export default function Home() {
               style={{
                 flex: 1, padding: "12px 0", fontSize: 12, letterSpacing: 4,
                 fontFamily: "'JetBrains Mono',monospace", cursor: "pointer", transition: "all 0.15s",
-                background: mode === "deathmatch" ? "#ff6b6b11" : "transparent",
-                border: `1px solid ${mode === "deathmatch" ? "#ff6b6b" : "#222"}`,
-                color: mode === "deathmatch" ? "#ff6b6b" : "#444",
+                background: mode === "deathmatch" ? "#ff6b6b18" : "transparent",
+                border: `1px solid ${mode === "deathmatch" ? "#ff6b6b" : "#383838"}`,
+                color: mode === "deathmatch" ? "#ff6b6b" : "#666",
               }}
             >💀 DEATHMATCH</button>
           </div>
-          <p style={{ color: "#e8e0c8", fontSize: 9, letterSpacing: 3, marginTop: 8, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}>
+          {/* description: was #ffffff at 9px — now #a0a0a0 for soft readability */}
+          <p style={{ color: "#a0a0a0", fontSize: 9, letterSpacing: 3, marginTop: 8, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}>
             {mode === "1v1"
               ? "2 PLAYERS · 60s RACE · MOST WORDS WINS"
               : "2–5 PLAYERS · FIRST TO 50 WORDS WINS · ATTACKS HIT ALL"}
@@ -319,7 +320,7 @@ export default function Home() {
         <button
           onClick={createRoom}
           disabled={!!loading}
-          className="w-full border border-[#e8b84b] text-[#e8b84b] py-4 text-sm tracking-[5px] mb-3 hover:bg-[#e8b84b11] transition-all disabled:opacity-40"
+          className="w-full border border-[#e8b84b] text-[#e8b84b] py-4 text-sm tracking-[5px] mb-3 hover:bg-[#e8b84b18] transition-all disabled:opacity-40"
           style={{ fontFamily: "'JetBrains Mono',monospace" }}
         >
           {loading === "create" ? "CREATING..." : "CREATE ROOM"}
@@ -327,9 +328,11 @@ export default function Home() {
 
         {/* Divider */}
         <div className="flex items-center gap-4 my-4">
-          <div className="flex-1 h-px bg-[#1a1a1a]" />
-          <span className="text-[#333] text-xs tracking-[4px]">OR</span>
-          <div className="flex-1 h-px bg-[#1a1a1a]" />
+          {/* divider line: #1a1a1a → #2e2e2e */}
+          <div className="flex-1 h-px bg-[#2e2e2e]" />
+          {/* OR label: #333 → #666 */}
+          <span className="text-[#666] text-xs tracking-[4px]">OR</span>
+          <div className="flex-1 h-px bg-[#2e2e2e]" />
         </div>
 
         {/* Join */}
@@ -339,13 +342,14 @@ export default function Home() {
             onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setError(""); }}
             placeholder="ROOM CODE"
             maxLength={6}
-            className="flex-1 bg-transparent border border-[#222] px-4 py-3 text-[#e8e0c8] text-sm tracking-[6px] outline-none focus:border-[#6ee7f7] transition-colors text-center"
+            /* border: #222 → #3a3a3a; placeholder: implicit → explicit #4a4a4a */
+            className="flex-1 bg-transparent border border-[#3a3a3a] px-4 py-3 text-[#e8e0c8] text-sm tracking-[6px] outline-none focus:border-[#6ee7f7] transition-colors text-center placeholder:text-[#4a4a4a]"
             style={{ fontFamily: "'JetBrains Mono',monospace" }}
           />
           <button
             onClick={joinRoom}
             disabled={!!loading}
-            className="border border-[#6ee7f7] text-[#6ee7f7] px-6 text-sm tracking-[3px] hover:bg-[#6ee7f711] transition-all disabled:opacity-40"
+            className="border border-[#6ee7f7] text-[#6ee7f7] px-6 text-sm tracking-[3px] hover:bg-[#6ee7f718] transition-all disabled:opacity-40"
             style={{ fontFamily: "'JetBrains Mono',monospace" }}
           >
             {loading === "join" ? "..." : "JOIN"}
@@ -358,21 +362,25 @@ export default function Home() {
         )}
 
         {/* Attacks preview */}
-        <div className="mt-8 border-t border-[#141414] pt-5">
-          <p className="text-[#333] text-[9px] tracking-[5px] text-center mb-3">ATTACKS</p>
+        <div className="mt-8 border-t border-[#2a2a2a] pt-5">
+          {/* section label: #333 → #666 */}
+          <p className="text-[#666] text-[9px] tracking-[5px] text-center mb-3">ATTACKS</p>
           <div className="flex gap-1.5">
             {ATTACKS.map((a) => (
               <div
                 key={a.id}
-                className="flex-1 bg-[#111] border border-[#1a1a1a] py-2 px-1 text-center relative group cursor-default"
+                /* card bg: #111 → #161616; border: #1a1a1a → #2e2e2e */
+                className="flex-1 bg-[#161616] border border-[#2e2e2e] py-2 px-1 text-center relative group cursor-default"
               >
                 <div style={{ fontSize: 13 }}>{a.label.split(" ")[0]}</div>
+                {/* wpm badge: was fine, kept */}
                 <div className="text-[9px] text-[#e8b84b] tracking-wider mt-1">≥{a.wpm}</div>
                 <div
                   className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 pointer-events-none
                     opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap z-10"
                   style={{
-                    background: "#181818", border: "1px solid #2a2a2a",
+                    /* tooltip bg: #181818 → #222; border: #2a2a2a → #3a3a3a; text: #e8e0c8 (good) */
+                    background: "#222", border: "1px solid #3a3a3a",
                     color: "#e8e0c8", fontSize: 9, letterSpacing: 3,
                     fontFamily: "'JetBrains Mono',monospace",
                   }}
@@ -392,15 +400,16 @@ export default function Home() {
         style={{
           position: "fixed", bottom: 24, right: 24,
           width: 36, height: 36, borderRadius: "50%",
-          border: "1px solid #2a2a2a", background: "#111",
-          color: "#444", fontSize: 15, cursor: "pointer",
+          /* border: #2a2a2a → #3a3a3a; color: #444 → #777 */
+          border: "1px solid #3a3a3a", background: "#161616",
+          color: "#777", fontSize: 15, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "'JetBrains Mono',monospace", fontWeight: 700,
           transition: "border-color 0.15s, color 0.15s, box-shadow 0.15s",
           zIndex: 40,
         }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = "#e8b84b"; e.currentTarget.style.color = "#e8b84b"; e.currentTarget.style.boxShadow = "0 0 12px #e8b84b22"; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.color = "#444"; e.currentTarget.style.boxShadow = "none"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#3a3a3a"; e.currentTarget.style.color = "#777"; e.currentTarget.style.boxShadow = "none"; }}
         title="How to play"
       >
         ?
@@ -412,15 +421,17 @@ export default function Home() {
         pointerEvents: "none", zIndex: 40,
         display: "flex", alignItems: "center", gap: 10,
       }}>
-        <div style={{ width: 24, height: "1px", background: "#2a2a2a" }} />
+        {/* divider lines: #2a2a2a → #3a3a3a */}
+        <div style={{ width: 24, height: "1px", background: "#3a3a3a" }} />
         <span style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 9, letterSpacing: "0.3em",
-          color: "#fff", userSelect: "none", whiteSpace: "nowrap",
+          /* text: was #fff but tiny, boosted to slightly warmer readable tone */
+          color: "#aaa", userSelect: "none", whiteSpace: "nowrap",
         }}>
-          CRAFTED BY <span style={{ color: "#e8b84b", opacity: 0.9 }}>DEN</span>
+          CRAFTED BY <span style={{ color: "#e8b84b", opacity: 1 }}>DEN</span>
         </span>
-        <div style={{ width: 24, height: "1px", background: "#2a2a2a" }} />
+        <div style={{ width: 24, height: "1px", background: "#3a3a3a" }} />
       </div>
 
       {/* Info modal */}
@@ -431,28 +442,33 @@ export default function Home() {
         }}>
           <div style={{
             position: "sticky", top: 0, background: "#0e0e0e",
-            borderBottom: "1px solid #1a1a1a", padding: "20px 32px",
+            /* sticky header border: #1a1a1a → #2e2e2e */
+            borderBottom: "1px solid #2e2e2e", padding: "20px 32px",
             display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10,
           }}>
             <div>
               <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", lineHeight: 1 }}>
                 <span style={{ color: "#e8e0c8" }}>HOW TO</span><span style={{ color: "#e8b84b" }}>PLAY</span>
               </div>
-              <div style={{ fontSize: 10, letterSpacing: 5, color: "#ffffff", marginTop: 5 }}>TYPO TERROR — QUICK GUIDE</div>
+              {/* subtitle: was #ffffff at tiny size — now #888 for softer legibility */}
+              <div style={{ fontSize: 10, letterSpacing: 5, color: "#888", marginTop: 5 }}>TYPO TERROR — QUICK GUIDE</div>
             </div>
             <button onClick={() => setShowInfo(false)} style={{
-              background: "transparent", border: "1px solid #2a2a2a",
-              color: "#555", fontSize: 13, letterSpacing: 3,
+              background: "transparent",
+              /* border: #2a2a2a → #3a3a3a; color: #555 → #777 */
+              border: "1px solid #3a3a3a",
+              color: "#777", fontSize: 13, letterSpacing: 3,
               padding: "10px 20px", cursor: "pointer", fontFamily: "'JetBrains Mono',monospace",
               transition: "border-color 0.15s, color 0.15s",
             }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "#e8b84b"; e.currentTarget.style.color = "#e8b84b"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.color = "#555"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#3a3a3a"; e.currentTarget.style.color = "#777"; }}
             >✕ CLOSE</button>
           </div>
 
           <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 32px 80px" }}>
             <Section label="OBJECTIVE">
+              {/* body text: #888 is fine, kept */}
               <p style={{ fontSize: 16, color: "#888", lineHeight: 2, margin: 0 }}>
                 Type the words displayed on screen as fast and accurately as you can.
                 Press <Chip color="#6ee7f7">SPACE</Chip> after each word to confirm it.
@@ -472,22 +488,27 @@ export default function Home() {
               </div>
             </Section>
             <Section label="ATTACKS">
-              <p style={{ fontSize: 15, color: "#666", lineHeight: 2, marginBottom: 24 }}>
+              <p style={{ fontSize: 15, color: "#888", lineHeight: 2, marginBottom: 24 }}>
                 Every correct word charges your <Chip color="#e8b84b">⚡ attack bar</Chip>. Once it hits <Chip color="#e8b84b">100%</Chip>,
                 press <Chip color="#e8b84b">TAB</Chip> to fire. Higher WPM unlocks more powerful attacks.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 {ATTACKS.map(a => (
-                  <div key={a.id} style={{ background: "#111", border: "1px solid #1e1e1e", padding: "18px 16px", borderTop: "2px solid #e8b84b33" }}>
+                  <div key={a.id} style={{
+                    /* card bg: #111 → #161616; border: #1e1e1e → #2e2e2e */
+                    background: "#161616", border: "1px solid #2e2e2e",
+                    padding: "18px 16px", borderTop: "2px solid #e8b84b55"
+                  }}>
                     <div style={{ fontSize: 15, color: "#e8e0c8", letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>{a.label}</div>
-                    <div style={{ fontSize: 13, color: "#555", lineHeight: 1.7, marginBottom: 10 }}>{a.desc}</div>
+                    {/* desc text: #555 → #777 */}
+                    <div style={{ fontSize: 13, color: "#777", lineHeight: 1.7, marginBottom: 10 }}>{a.desc}</div>
                     <div style={{ fontSize: 12, color: "#e8b84b", letterSpacing: 2 }}>≥ {a.wpm} WPM</div>
                   </div>
                 ))}
               </div>
             </Section>
             <Section label="DIFFICULTY VOTE" last>
-              <p style={{ fontSize: 15, color: "#666", lineHeight: 2, marginBottom: 20 }}>
+              <p style={{ fontSize: 15, color: "#888", lineHeight: 2, marginBottom: 20 }}>
                 Before each game, all players vote on the word difficulty.
                 The <span style={{ color: "#e8e0c8" }}>majority wins</span> — ties are broken randomly.
               </p>
@@ -497,9 +518,10 @@ export default function Home() {
                   ["MEDIUM", "#e8b84b", "Everyday vocabulary like travel, garden, window. A balanced challenge."],
                   ["HARD",   "#ff6b6b", "Contractions like don't, they've plus tricky words like rhythm and queue."],
                 ].map(([label, color, desc]) => (
-                  <div key={label} style={{ border: `1px solid ${color}33`, background: `${color}07`, padding: "20px 16px" }}>
+                  <div key={label} style={{ border: `1px solid ${color}44`, background: `${color}0d`, padding: "20px 16px" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color, letterSpacing: 3, marginBottom: 10 }}>{label}</div>
-                    <div style={{ fontSize: 13, color: "#555", lineHeight: 1.7 }}>{desc}</div>
+                    {/* desc: #555 → #777 */}
+                    <div style={{ fontSize: 13, color: "#777", lineHeight: 1.7 }}>{desc}</div>
                   </div>
                 ))}
               </div>
@@ -512,9 +534,14 @@ export default function Home() {
                   ["👻", "GHOST hides your typed characters. Keep going — your input still registers."],
                   ["💣", "BOMB adds 10 words to your opponent. Fire it when they're close to winning."],
                 ].map(([icon, tip]) => (
-                  <div key={icon} style={{ display: "flex", gap: 14, alignItems: "flex-start", background: "#0d0d0d", border: "1px solid #181818", padding: "16px 14px" }}>
+                  <div key={icon} style={{
+                    display: "flex", gap: 14, alignItems: "flex-start",
+                    /* bg: #0d0d0d → #121212; border: #181818 → #2a2a2a */
+                    background: "#121212", border: "1px solid #2a2a2a", padding: "16px 14px"
+                  }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
-                    <span style={{ fontSize: 13, color: "#555", lineHeight: 1.7 }}>{tip}</span>
+                    {/* tip text: #555 → #777 */}
+                    <span style={{ fontSize: 13, color: "#777", lineHeight: 1.7 }}>{tip}</span>
                   </div>
                 ))}
               </div>
@@ -528,8 +555,10 @@ export default function Home() {
 
 function Section({ label, children, last = false }) {
   return (
-    <div style={{ marginBottom: last ? 0 : 56, paddingBottom: last ? 0 : 56, borderBottom: last ? "none" : "1px solid #141414" }}>
-      <div style={{ fontSize: 10, letterSpacing: 6, color: "#333", marginBottom: 24, fontFamily: "'JetBrains Mono',monospace" }}>{label}</div>
+    /* section divider: #141414 → #252525 */
+    <div style={{ marginBottom: last ? 0 : 56, paddingBottom: last ? 0 : 56, borderBottom: last ? "none" : "1px solid #252525" }}>
+      {/* section label: #333 → #666 */}
+      <div style={{ fontSize: 10, letterSpacing: 6, color: "#666", marginBottom: 24, fontFamily: "'JetBrains Mono',monospace" }}>{label}</div>
       <div style={{ fontFamily: "'JetBrains Mono',monospace" }}>{children}</div>
     </div>
   );
@@ -537,12 +566,13 @@ function Section({ label, children, last = false }) {
 
 function ModeCard({ icon, title, color, children }) {
   return (
-    <div style={{ border: `1px solid ${color}22`, background: `${color}06`, padding: "24px 20px", borderTop: `3px solid ${color}` }}>
+    <div style={{ border: `1px solid ${color}33`, background: `${color}0a`, padding: "24px 20px", borderTop: `3px solid ${color}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <span style={{ fontSize: 18 }}>{icon}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace" }}>{title}</span>
       </div>
-      <div style={{ fontSize: 13, color: "#555", lineHeight: 1.9, fontFamily: "'JetBrains Mono',monospace" }}>{children}</div>
+      {/* body: #555 → #777 */}
+      <div style={{ fontSize: 13, color: "#777", lineHeight: 1.9, fontFamily: "'JetBrains Mono',monospace" }}>{children}</div>
     </div>
   );
 }
@@ -550,7 +580,7 @@ function ModeCard({ icon, title, color, children }) {
 function Chip({ color, children }) {
   return (
     <span style={{
-      color, background: `${color}14`, border: `1px solid ${color}33`,
+      color, background: `${color}1a`, border: `1px solid ${color}44`,
       padding: "2px 8px", fontSize: 11, letterSpacing: 1,
       fontFamily: "'JetBrains Mono',monospace",
       display: "inline-block", verticalAlign: "middle", margin: "0 3px",

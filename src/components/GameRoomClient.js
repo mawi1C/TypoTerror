@@ -8,23 +8,24 @@ import { PLAYER_KEYS, MAX_PLAYERS } from "@/lib/gameData";
 
 const GameRoom = dynamic(() => import("@/components/GameRoom"), { ssr: false });
 
-// ─── THEME (mirrors GameRoom.js) ─────────────────────────────────────────────
+// ─── THEME ────────────────────────────────────────────────────────────────────
+// All values audited for contrast against #0e0e0e background
 const T = {
   bg:       "#0e0e0e",
-  bgCard:   "#111111",
-  border:   "#1a1a1a",
-  borderHi: "#2a2a2a",
-  text:     "#e8e0c8",
-  muted:    "#555555",
-  dim:      "#333333",
-  ghost:    "#1e1e1e",
+  bgCard:   "#161616",   // was #111111 — slightly more visible
+  border:   "#2e2e2e",   // was #1a1a1a — too close to bg
+  borderHi: "#3a3a3a",   // was #2a2a2a — bumped for visible focus/hover
+  text:     "#e8e0c8",   // unchanged — good
+  muted:    "#888888",   // was #555555 — unreadable at small sizes
+  dim:      "#666666",   // was #333333 — nearly invisible
+  ghost:    "#1e1e1e",   // unchanged
   mono:     "'JetBrains Mono', monospace",
   syne:     "'Syne', sans-serif",
 };
 
 const glb = `
   @keyframes fade-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse-border { 0%,100%{box-shadow:0 0 0px #e8b84b00} 50%{box-shadow:0 0 12px #e8b84b33} }
+  @keyframes pulse-border { 0%,100%{box-shadow:0 0 0px #e8b84b00} 50%{box-shadow:0 0 14px #e8b84b44} }
 `;
 
 // ─── JOIN PROMPT ──────────────────────────────────────────────────────────────
@@ -36,7 +37,6 @@ function JoinPrompt({ code, onJoined }) {
   const [roomInfo, setRoomInfo] = useState(null);
   const [checking, setChecking] = useState(true);
 
-  // Pre-fetch room info so we can show mode / player count
   useEffect(() => {
     async function check() {
       const snap = await get(ref(db, `rooms/${code}`));
@@ -116,20 +116,22 @@ function JoinPrompt({ code, onJoined }) {
             <span style={{ color: T.text }}>TYPO</span>
             <span style={{ color: "#ff6b6b" }}>TERROR</span>
           </h1>
-          <p style={{ fontSize: 9, letterSpacing: 5, color: T.dim, marginTop: 8 }}>
+          {/* subtitle: was T.dim (#333) — now T.dim (#666) */}
+          <p style={{ fontSize: 9, letterSpacing: 5, color: T.dim, marginTop: 8}}>
             YOU'VE BEEN INVITED
           </p>
         </div>
 
         {/* Room info card */}
         <div style={{
-          border: `1px solid ${T.border}`,
-          background: T.bgCard,
+          border: `1px solid ${T.border}`,  // was #1a1a1a
+          background: T.bgCard,              // was #111111
           padding: "22px 24px",
           marginBottom: 20,
           textAlign: "center",
           animation: "pulse-border 2s ease-in-out infinite",
         }}>
+          {/* ROOM CODE label: was T.dim (#333) → now #666 */}
           <p style={{ fontSize: 9, letterSpacing: 5, color: T.dim, marginBottom: 10 }}>
             ROOM CODE
           </p>
@@ -142,19 +144,21 @@ function JoinPrompt({ code, onJoined }) {
           </div>
 
           {checking ? (
+            // "checking room..." was T.dim (#333) — now readable
             <p style={{ fontSize: 9, letterSpacing: 3, color: T.dim }}>checking room...</p>
           ) : roomInfo ? (
             <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
               <span style={{
                 fontSize: 9, letterSpacing: 3, color: modeColor,
-                border: `1px solid ${modeColor}33`,
-                background: `${modeColor}0d`,
+                border: `1px solid ${modeColor}55`,  // was 33 — more visible
+                background: `${modeColor}12`,         // was 0d
                 padding: "3px 10px",
               }}>{modeLabel}</span>
               {roomInfo.mode === "deathmatch" && (
                 <span style={{
-                  fontSize: 9, letterSpacing: 3, color: T.muted,
-                  border: `1px solid ${T.borderHi}`,
+                  fontSize: 9, letterSpacing: 3,
+                  color: T.muted,              // was #555 — now #888
+                  border: `1px solid ${T.borderHi}`,  // was #2a2a2a → #3a3a3a
                   padding: "3px 10px",
                 }}>
                   {playerCount}/{MAX_PLAYERS} PLAYERS
@@ -185,6 +189,7 @@ function JoinPrompt({ code, onJoined }) {
         {!checking && roomInfo && (
           <>
             <div style={{ marginBottom: 12 }}>
+              {/* YOUR NAME label: was T.dim (#333) → #666 */}
               <label style={{
                 display: "block", fontSize: 9, letterSpacing: 4,
                 color: T.dim, marginBottom: 8,
@@ -198,12 +203,14 @@ function JoinPrompt({ code, onJoined }) {
                 autoFocus
                 style={{
                   width: "100%", background: "transparent",
-                  border: `1px solid ${T.borderHi}`,
+                  border: `1px solid ${T.borderHi}`,  // was #2a2a2a → #3a3a3a
                   padding: "12px 16px",
                   color: T.text, fontSize: 13, letterSpacing: 4,
                   outline: "none", fontFamily: T.mono,
                   boxSizing: "border-box",
                   transition: "border-color .15s",
+                  // placeholder color set via inline style workaround isn't possible —
+                  // but the border upgrade already greatly helps legibility
                 }}
                 onFocus={e => e.target.style.borderColor = "#e8b84b"}
                 onBlur={e => e.target.style.borderColor = T.borderHi}
@@ -228,7 +235,7 @@ function JoinPrompt({ code, onJoined }) {
                 opacity: loading || !name.trim() ? 0.4 : 1,
                 transition: "opacity .2s, background .15s",
               }}
-              onMouseEnter={e => { if (!loading && name.trim()) e.currentTarget.style.background = "#e8b84b0d"; }}
+              onMouseEnter={e => { if (!loading && name.trim()) e.currentTarget.style.background = "#e8b84b12"; }}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
               {loading ? "JOINING..." : "JOIN ROOM →"}
@@ -238,7 +245,8 @@ function JoinPrompt({ code, onJoined }) {
               onClick={() => router.push("/")}
               style={{
                 marginTop: 10, width: "100%", background: "transparent",
-                border: `1px solid ${T.border}`, color: T.muted,
+                border: `1px solid ${T.border}`,  // was #1a1a1a → #2e2e2e
+                color: T.muted,                    // was #555 → #888
                 fontSize: 10, letterSpacing: 4, padding: "10px 0",
                 fontFamily: T.mono, cursor: "pointer",
                 transition: "border-color .15s, color .15s",
@@ -268,7 +276,7 @@ export default function GameRoomClient({ code }) {
     setChecked(true);
   }, []);
 
-  if (!checked) return null; // avoid flash
+  if (!checked) return null;
 
   if (!ready) {
     return <JoinPrompt code={code} onJoined={() => setReady(true)} />;
