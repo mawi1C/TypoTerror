@@ -91,7 +91,7 @@ function TypingQuote() {
             fontSize: "clamp(13px, 1.5vw, 18px)",
             letterSpacing: "0.22em",
             color: "#e8e0c8",
-            opacity: 0.45, // was 0.28 — too dim against dark bg
+            opacity: 0.45,
             fontWeight: 700,
             userSelect: "none",
             lineHeight: 1.55,
@@ -204,7 +204,6 @@ export default function Home() {
   const [showModeDropdown, setShowModeDropdown] = useState(false);
   const modeDropdownRef = useRef(null);
 
-  // Close dropdown on outside click only
   useEffect(() => {
     if (!showModeDropdown) return;
     const handler = (e) => {
@@ -283,14 +282,12 @@ export default function Home() {
 
         {/* Name input */}
         <div className="mb-4">
-          {/* was #444 — boosted to #888 for legibility */}
-          <label className="block text-[10px] tracking-[4px] text-[#888] mb-2">YOUR NAME</label>
+          <label className="block text-[10px] tracking-[4px] text-[#999] mb-2">YOUR NAME</label>
           <input
             value={name}
             onChange={(e) => { setName(e.target.value); setError(""); }}
             placeholder="enter username..."
-            /* border was #222 — now #3a3a3a so it's visible against #0e0e0e */
-            className="w-full bg-transparent border border-[#3a3a3a] px-4 py-3 text-[#e8e0c8] text-sm tracking-widest outline-none focus:border-[#e8b84b] transition-colors placeholder:text-[#4a4a4a]"
+            className="w-full bg-transparent border border-[#4a4a4a] px-4 py-3 text-[#e8e0c8] text-sm tracking-widest outline-none focus:border-[#e8b84b] transition-colors placeholder:text-[#666]"
             style={{ fontFamily: "'JetBrains Mono',monospace" }}
             maxLength={18}
           />
@@ -298,7 +295,7 @@ export default function Home() {
 
         {/* Mode selector — dropdown */}
         <div className="mb-5" style={{ position: "relative" }} ref={modeDropdownRef}>
-          <label className="block text-[10px] tracking-[4px] text-[#888] mb-2">GAME MODE</label>
+          <label className="block text-[10px] tracking-[4px] text-[#999] mb-2">GAME MODE</label>
 
           {(() => {
             const OPTIONS = [
@@ -317,7 +314,7 @@ export default function Home() {
                     width: "100%", padding: "12px 16px",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     background: `${selected.color}0d`,
-                    border: `1px solid ${showModeDropdown ? selected.color : "#383838"}`,
+                    border: `1px solid ${showModeDropdown ? selected.color : "#4a4a4a"}`,
                     color: selected.color, cursor: "pointer", transition: "all 0.15s",
                     fontFamily: "'JetBrains Mono',monospace",
                   }}
@@ -327,7 +324,7 @@ export default function Home() {
                     <span style={{ fontSize: 11, letterSpacing: 3, fontWeight: 700 }}>{selected.label}</span>
                   </span>
                   <span style={{
-                    fontSize: 9, letterSpacing: 2, color: "#555",
+                    fontSize: 9, letterSpacing: 2, color: "#888",
                     transform: showModeDropdown ? "rotate(180deg)" : "rotate(0deg)",
                     transition: "transform 0.2s", display: "inline-block",
                   }}>▼</span>
@@ -337,7 +334,7 @@ export default function Home() {
                 {showModeDropdown && (
                   <div style={{
                     position: "absolute", top: "calc(100% - 4px)", left: 0, right: 0, zIndex: 20,
-                    border: "1px solid #383838", borderTop: "none",
+                    border: "1px solid #4a4a4a", borderTop: "none",
                     background: "#111",
                   }}>
                     {OPTIONS.map((o, i) => {
@@ -351,20 +348,20 @@ export default function Home() {
                           width: "100%", padding: "11px 16px",
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           background: isActive ? `${o.color}12` : "transparent",
-                          borderTop: i > 0 ? "1px solid #222" : "none",
+                          borderTop: i > 0 ? "1px solid #2e2e2e" : "none",
                           borderLeft: "none", borderRight: "none", borderBottom: "none",
-                          color: isActive ? o.color : "#555", cursor: "pointer",
+                          color: isActive ? o.color : "#777", cursor: "pointer",
                           transition: "all 0.12s", fontFamily: "'JetBrains Mono',monospace",
                           textAlign: "left",
                         }}
                           onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#ffffff08"; e.currentTarget.style.color = o.color; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = isActive ? `${o.color}12` : "transparent"; e.currentTarget.style.color = isActive ? o.color : "#555"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = isActive ? `${o.color}12` : "transparent"; e.currentTarget.style.color = isActive ? o.color : "#777"; }}
                         >
                           <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <span style={{ fontSize: 13 }}>{o.icon}</span>
                             <span>
                               <div style={{ fontSize: 10, letterSpacing: 3, fontWeight: 700 }}>{o.label}</div>
-                              <div style={{ fontSize: 8, letterSpacing: 2, color: "#444", marginTop: 2 }}>{o.desc}</div>
+                              <div style={{ fontSize: 8, letterSpacing: 2, color: "#666", marginTop: 2 }}>{o.desc}</div>
                             </span>
                           </span>
                           {isActive && <span style={{ fontSize: 10, color: o.color }}>✓</span>}
@@ -375,7 +372,7 @@ export default function Home() {
                 )}
 
                 {/* Description under trigger */}
-                <p style={{ color: "#555", fontSize: 9, letterSpacing: 3, marginTop: 7, fontFamily: "'JetBrains Mono',monospace" }}>
+                <p style={{ color: "#777", fontSize: 9, letterSpacing: 3, marginTop: 7, fontFamily: "'JetBrains Mono',monospace" }}>
                   {selected.desc}
                 </p>
               </>
@@ -395,11 +392,9 @@ export default function Home() {
 
         {/* Divider */}
         <div className="flex items-center gap-4 my-4">
-          {/* divider line: #1a1a1a → #2e2e2e */}
-          <div className="flex-1 h-px bg-[#2e2e2e]" />
-          {/* OR label: #333 → #666 */}
-          <span className="text-[#666] text-xs tracking-[4px]">OR</span>
-          <div className="flex-1 h-px bg-[#2e2e2e]" />
+          <div className="flex-1 h-px bg-[#3a3a3a]" />
+          <span className="text-[#888] text-xs tracking-[4px]">OR</span>
+          <div className="flex-1 h-px bg-[#3a3a3a]" />
         </div>
 
         {/* Join */}
@@ -409,8 +404,7 @@ export default function Home() {
             onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setError(""); }}
             placeholder="ROOM CODE"
             maxLength={6}
-            /* border: #222 → #3a3a3a; placeholder: implicit → explicit #4a4a4a */
-            className="flex-1 bg-transparent border border-[#3a3a3a] px-4 py-3 text-[#e8e0c8] text-sm tracking-[6px] outline-none focus:border-[#6ee7f7] transition-colors text-center placeholder:text-[#4a4a4a]"
+            className="flex-1 bg-transparent border border-[#4a4a4a] px-4 py-3 text-[#e8e0c8] text-sm tracking-[6px] outline-none focus:border-[#6ee7f7] transition-colors text-center placeholder:text-[#666]"
             style={{ fontFamily: "'JetBrains Mono',monospace" }}
           />
           <button
@@ -424,25 +418,21 @@ export default function Home() {
         </div>
 
         {/* Attacks preview */}
-        <div className="mt-8 border-t border-[#2a2a2a] pt-5">
-          {/* section label: #333 → #666 */}
-          <p className="text-[#666] text-[9px] tracking-[5px] text-center mb-3">ATTACKS</p>
+        <div className="mt-8 border-t border-[#333] pt-5">
+          <p className="text-[#888] text-[9px] tracking-[5px] text-center mb-3">ATTACKS</p>
           <div className="flex gap-1.5">
             {ATTACKS.map((a) => (
               <div
                 key={a.id}
-                /* card bg: #111 → #161616; border: #1a1a1a → #2e2e2e */
-                className="flex-1 bg-[#161616] border border-[#2e2e2e] py-2 px-1 text-center relative group cursor-default"
+                className="flex-1 bg-[#161616] border border-[#383838] py-2 px-1 text-center relative group cursor-default"
               >
                 <div style={{ fontSize: 13 }}>{a.label.split(" ")[0]}</div>
-                {/* wpm badge: was fine, kept */}
                 <div className="text-[9px] text-[#e8b84b] tracking-wider mt-1">≥{a.wpm}</div>
                 <div
                   className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 pointer-events-none
                     opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap z-10"
                   style={{
-                    /* tooltip bg: #181818 → #222; border: #2a2a2a → #3a3a3a; text: #e8e0c8 (good) */
-                    background: "#222", border: "1px solid #3a3a3a",
+                    background: "#222", border: "1px solid #4a4a4a",
                     color: "#e8e0c8", fontSize: 9, letterSpacing: 3,
                     fontFamily: "'JetBrains Mono',monospace",
                   }}
@@ -462,16 +452,15 @@ export default function Home() {
         style={{
           position: "fixed", bottom: 24, right: 24,
           width: 36, height: 36, borderRadius: "50%",
-          /* border: #2a2a2a → #3a3a3a; color: #444 → #777 */
-          border: "1px solid #3a3a3a", background: "#161616",
-          color: "#777", fontSize: 15, cursor: "pointer",
+          border: "1px solid #4a4a4a", background: "#161616",
+          color: "#999", fontSize: 15, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "'JetBrains Mono',monospace", fontWeight: 700,
           transition: "border-color 0.15s, color 0.15s, box-shadow 0.15s",
           zIndex: 40,
         }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = "#e8b84b"; e.currentTarget.style.color = "#e8b84b"; e.currentTarget.style.boxShadow = "0 0 12px #e8b84b22"; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#3a3a3a"; e.currentTarget.style.color = "#777"; e.currentTarget.style.boxShadow = "none"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#4a4a4a"; e.currentTarget.style.color = "#999"; e.currentTarget.style.boxShadow = "none"; }}
         title="How to play"
       >
         ?
@@ -483,20 +472,18 @@ export default function Home() {
         pointerEvents: "none", zIndex: 40,
         display: "flex", alignItems: "center", gap: 10,
       }}>
-        {/* divider lines: #2a2a2a → #3a3a3a */}
-        <div style={{ width: 24, height: "1px", background: "#3a3a3a" }} />
+        <div style={{ width: 24, height: "1px", background: "#4a4a4a" }} />
         <span style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 9, letterSpacing: "0.3em",
-          /* text: was #fff but tiny, boosted to slightly warmer readable tone */
           color: "#aaa", userSelect: "none", whiteSpace: "nowrap",
         }}>
           CRAFTED BY <span style={{ color: "#e8b84b", opacity: 1 }}>DEN</span>
         </span>
-        <div style={{ width: 24, height: "1px", background: "#3a3a3a" }} />
+        <div style={{ width: 24, height: "1px", background: "#4a4a4a" }} />
       </div>
 
-      {/* Error modal — matches GameRoom LeaveModal style */}
+      {/* Error modal */}
       {error && (
         <div style={{
           position: "fixed", inset: 0, background: "#0e0e0ef0",
@@ -509,14 +496,13 @@ export default function Home() {
             animation: "fade-in .2s ease", position: "relative", overflow: "hidden",
             fontFamily: "'JetBrains Mono', monospace",
           }}>
-            {/* top accent line */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, #ff6b6b55, transparent)" }} />
-            <div style={{ fontSize: 9, letterSpacing: 6, color: "#666", marginBottom: 12 }}>TYPO TERROR</div>
+            <div style={{ fontSize: 9, letterSpacing: 6, color: "#888", marginBottom: 12 }}>TYPO TERROR</div>
             <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 3, fontFamily: "'Syne', sans-serif", color: "#ff6b6b", marginBottom: 8 }}>
               NOTICE
             </div>
             <div style={{ width: 40, height: 1, background: "#ff6b6b44", margin: "0 auto 20px" }} />
-            <p style={{ color: "#888", fontSize: 10, letterSpacing: 2, lineHeight: 2, marginBottom: 28 }}>
+            <p style={{ color: "#999", fontSize: 10, letterSpacing: 2, lineHeight: 2, marginBottom: 28 }}>
               {error}
             </p>
             <button onClick={() => setError("")} style={{
@@ -540,7 +526,6 @@ export default function Home() {
         }}>
           <div style={{
             position: "sticky", top: 0, background: "#0e0e0e",
-            /* sticky header border: #1a1a1a → #2e2e2e */
             borderBottom: "1px solid #2e2e2e", padding: "20px 32px",
             display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10,
           }}>
@@ -548,25 +533,22 @@ export default function Home() {
               <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", lineHeight: 1 }}>
                 <span style={{ color: "#e8e0c8" }}>HOW TO</span><span style={{ color: "#e8b84b" }}>PLAY</span>
               </div>
-              {/* subtitle: was #ffffff at tiny size — now #888 for softer legibility */}
               <div style={{ fontSize: 10, letterSpacing: 5, color: "#888", marginTop: 5 }}>TYPO TERROR — QUICK GUIDE</div>
             </div>
             <button onClick={() => setShowInfo(false)} style={{
               background: "transparent",
-              /* border: #2a2a2a → #3a3a3a; color: #555 → #777 */
-              border: "1px solid #3a3a3a",
-              color: "#777", fontSize: 13, letterSpacing: 3,
+              border: "1px solid #4a4a4a",
+              color: "#999", fontSize: 13, letterSpacing: 3,
               padding: "10px 20px", cursor: "pointer", fontFamily: "'JetBrains Mono',monospace",
               transition: "border-color 0.15s, color 0.15s",
             }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "#e8b84b"; e.currentTarget.style.color = "#e8b84b"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "#3a3a3a"; e.currentTarget.style.color = "#777"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#4a4a4a"; e.currentTarget.style.color = "#999"; }}
             >✕ CLOSE</button>
           </div>
 
           <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 32px 80px" }}>
             <Section label="OBJECTIVE">
-              {/* body text: #888 is fine, kept */}
               <p style={{ fontSize: 16, color: "#888", lineHeight: 2, margin: 0 }}>
                 Type the words displayed on screen as fast and accurately as you can.
                 Press <Chip color="#6ee7f7">SPACE</Chip> after each word to confirm it.
@@ -593,12 +575,10 @@ export default function Home() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 {ATTACKS.map(a => (
                   <div key={a.id} style={{
-                    /* card bg: #111 → #161616; border: #1e1e1e → #2e2e2e */
                     background: "#161616", border: "1px solid #2e2e2e",
                     padding: "18px 16px", borderTop: "2px solid #e8b84b55"
                   }}>
                     <div style={{ fontSize: 15, color: "#e8e0c8", letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>{a.label}</div>
-                    {/* desc text: #555 → #777 */}
                     <div style={{ fontSize: 13, color: "#777", lineHeight: 1.7, marginBottom: 10 }}>{a.desc}</div>
                     <div style={{ fontSize: 12, color: "#e8b84b", letterSpacing: 2 }}>≥ {a.wpm} WPM</div>
                   </div>
@@ -618,7 +598,6 @@ export default function Home() {
                 ].map(([label, color, desc]) => (
                   <div key={label} style={{ border: `1px solid ${color}44`, background: `${color}0d`, padding: "20px 16px" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color, letterSpacing: 3, marginBottom: 10 }}>{label}</div>
-                    {/* desc: #555 → #777 */}
                     <div style={{ fontSize: 13, color: "#777", lineHeight: 1.7 }}>{desc}</div>
                   </div>
                 ))}
@@ -634,11 +613,9 @@ export default function Home() {
                 ].map(([icon, tip]) => (
                   <div key={icon} style={{
                     display: "flex", gap: 14, alignItems: "flex-start",
-                    /* bg: #0d0d0d → #121212; border: #181818 → #2a2a2a */
-                    background: "#121212", border: "1px solid #2a2a2a", padding: "16px 14px"
+                    background: "#121212", border: "1px solid #2e2e2e", padding: "16px 14px"
                   }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
-                    {/* tip text: #555 → #777 */}
                     <span style={{ fontSize: 13, color: "#777", lineHeight: 1.7 }}>{tip}</span>
                   </div>
                 ))}
@@ -653,9 +630,7 @@ export default function Home() {
 
 function Section({ label, children, last = false }) {
   return (
-    /* section divider: #141414 → #252525 */
     <div style={{ marginBottom: last ? 0 : 56, paddingBottom: last ? 0 : 56, borderBottom: last ? "none" : "1px solid #252525" }}>
-      {/* section label: #333 → #666 */}
       <div style={{ fontSize: 10, letterSpacing: 6, color: "#666", marginBottom: 24, fontFamily: "'JetBrains Mono',monospace" }}>{label}</div>
       <div style={{ fontFamily: "'JetBrains Mono',monospace" }}>{children}</div>
     </div>
@@ -669,7 +644,6 @@ function ModeCard({ icon, title, color, children }) {
         <span style={{ fontSize: 18 }}>{icon}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace" }}>{title}</span>
       </div>
-      {/* body: #555 → #777 */}
       <div style={{ fontSize: 13, color: "#777", lineHeight: 1.9, fontFamily: "'JetBrains Mono',monospace" }}>{children}</div>
     </div>
   );
