@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { ref, set, get, update } from "firebase/database";
-import { generateRoomCode, makeWordList, ATTACKS, PLAYER_KEYS, MAX_PLAYERS, WORDS_EASY, WORDS_MEDIUM } from "@/lib/gameData";
+import { generateRoomCode, makeWordList, ATTACKS, PLAYER_KEYS, MAX_PLAYERS, WORDS_EASY, WORDS_MEDIUM, HP_MAX } from "@/lib/gameData";
 import TypoLogo from "../app/icon-web.png";
 import Image from "next/image";
 
@@ -82,7 +82,7 @@ function TypingQuote() {
       display: "flex", flexDirection: "column", alignItems: "flex-start",
       pointerEvents: "none", zIndex: 2,
     }}>
-      <style>{`@keyframes tbCursorBlink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
+      <style>{`@keyframes tbCursorBlink { 0%,100%{opacity:1} 50%{opacity:0} } @keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }`}</style>
       {[line1, line2].map((line, i) => {
         const showCursor = i === 0 ? cursorOnL1 : cursorOnL2;
         return (
@@ -199,7 +199,22 @@ export default function Home() {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState("");
   const [mode, setMode]         = useState("1v1");
+  const [dmSubmode, setDmSubmode] = useState("classic");
   const [showInfo, setShowInfo] = useState(false);
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const modeDropdownRef = useRef(null);
+
+  // Close dropdown on outside click only
+  useEffect(() => {
+    if (!showModeDropdown) return;
+    const handler = (e) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target)) {
+        setShowModeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showModeDropdown]);
 
   async function createRoom() {
     if (!name.trim()) { setError("Enter your name first"); return; }
@@ -214,8 +229,8 @@ export default function Home() {
       });
     } else {
       await set(ref(db, `rooms/${code}`), {
-        code, words, mode: "deathmatch", status: "waiting",
-        host: { name: name.trim(), typedCount: 0, chars: 0, wpm: 0, charge: 0, ready: false },
+        code, words, mode: "deathmatch", dmSubmode, status: "waiting",
+        host: { name: name.trim(), typedCount: 0, chars: 0, wpm: 0, charge: 0, ready: false, hp: HP_MAX },
         attacks: [], createdAt: Date.now(),
       });
     }
@@ -238,7 +253,7 @@ export default function Home() {
       if (takenKeys.length >= MAX_PLAYERS) { setError("Room is full (5/5)"); setLoading(""); return; }
       const nextKey = PLAYER_KEYS.find(k => !room[k]);
       await update(ref(db, `rooms/${code}/${nextKey}`), {
-        name: name.trim(), typedCount: 0, chars: 0, wpm: 0, charge: 0, ready: false,
+        name: name.trim(), typedCount: 0, chars: 0, wpm: 0, charge: 0, ready: false, hp: HP_MAX,
       });
       sessionStorage.setItem("tb_name", name.trim());
       sessionStorage.setItem("tb_role", nextKey);
@@ -281,39 +296,91 @@ export default function Home() {
           />
         </div>
 
-        {/* Mode selector */}
-        <div className="mb-5">
-          {/* label: #444 → #888 */}
+        {/* Mode selector — dropdown */}
+        <div className="mb-5" style={{ position: "relative" }} ref={modeDropdownRef}>
           <label className="block text-[10px] tracking-[4px] text-[#888] mb-2">GAME MODE</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("1v1")}
-              style={{
-                flex: 1, padding: "12px 0", fontSize: 12, letterSpacing: 4,
-                fontFamily: "'JetBrains Mono',monospace", cursor: "pointer", transition: "all 0.15s",
-                background: mode === "1v1" ? "#6ee7f718" : "transparent",
-                // inactive border: #222 → #383838; inactive text: #444 → #666
-                border: `1px solid ${mode === "1v1" ? "#6ee7f7" : "#383838"}`,
-                color: mode === "1v1" ? "#6ee7f7" : "#666",
-              }}
-            >⚔ 1v1</button>
-            <button
-              onClick={() => setMode("deathmatch")}
-              style={{
-                flex: 1, padding: "12px 0", fontSize: 12, letterSpacing: 4,
-                fontFamily: "'JetBrains Mono',monospace", cursor: "pointer", transition: "all 0.15s",
-                background: mode === "deathmatch" ? "#ff6b6b18" : "transparent",
-                border: `1px solid ${mode === "deathmatch" ? "#ff6b6b" : "#383838"}`,
-                color: mode === "deathmatch" ? "#ff6b6b" : "#666",
-              }}
-            >💀 DEATHMATCH</button>
-          </div>
-          {/* description: was #ffffff at 9px — now #a0a0a0 for soft readability */}
-          <p style={{ color: "#a0a0a0", fontSize: 9, letterSpacing: 3, marginTop: 8, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}>
-            {mode === "1v1"
-              ? "2 PLAYERS · 60s RACE · MOST WORDS WINS"
-              : "2–5 PLAYERS · FIRST TO 50 WORDS WINS · ATTACKS HIT ALL"}
-          </p>
+
+          {(() => {
+            const OPTIONS = [
+              { mode: "1v1",        sub: null,      icon: "⚔", label: "1V1",              desc: "2 PLAYERS · 60s RACE · MOST WORDS WINS",           color: "#6ee7f7" },
+              { mode: "deathmatch", sub: "classic",  icon: "💀", label: "DEATHMATCH · CLASSIC", desc: "2–5 PLAYERS · FIRST TO 50 WORDS WINS",         color: "#ff6b6b" },
+              { mode: "deathmatch", sub: "hp",       icon: "❤", label: "DEATHMATCH · HP",       desc: "2–5 PLAYERS · LAST ONE STANDING",              color: "#ff6b6b" },
+            ];
+            const selected = OPTIONS.find(o => o.mode === mode && (o.sub === null || o.sub === dmSubmode)) || OPTIONS[0];
+
+            return (
+              <>
+                {/* Trigger button */}
+                <button
+                  onClick={() => setShowModeDropdown(v => !v)}
+                  style={{
+                    width: "100%", padding: "12px 16px",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: `${selected.color}0d`,
+                    border: `1px solid ${showModeDropdown ? selected.color : "#383838"}`,
+                    color: selected.color, cursor: "pointer", transition: "all 0.15s",
+                    fontFamily: "'JetBrains Mono',monospace",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 14 }}>{selected.icon}</span>
+                    <span style={{ fontSize: 11, letterSpacing: 3, fontWeight: 700 }}>{selected.label}</span>
+                  </span>
+                  <span style={{
+                    fontSize: 9, letterSpacing: 2, color: "#555",
+                    transform: showModeDropdown ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s", display: "inline-block",
+                  }}>▼</span>
+                </button>
+
+                {/* Dropdown options */}
+                {showModeDropdown && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% - 4px)", left: 0, right: 0, zIndex: 20,
+                    border: "1px solid #383838", borderTop: "none",
+                    background: "#111",
+                  }}>
+                    {OPTIONS.map((o, i) => {
+                      const isActive = o.mode === mode && (o.sub === null || o.sub === dmSubmode);
+                      return (
+                        <button key={i} onClick={() => {
+                          setMode(o.mode);
+                          if (o.sub) setDmSubmode(o.sub);
+                          setShowModeDropdown(false);
+                        }} style={{
+                          width: "100%", padding: "11px 16px",
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          background: isActive ? `${o.color}12` : "transparent",
+                          borderTop: i > 0 ? "1px solid #222" : "none",
+                          borderLeft: "none", borderRight: "none", borderBottom: "none",
+                          color: isActive ? o.color : "#555", cursor: "pointer",
+                          transition: "all 0.12s", fontFamily: "'JetBrains Mono',monospace",
+                          textAlign: "left",
+                        }}
+                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#ffffff08"; e.currentTarget.style.color = o.color; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = isActive ? `${o.color}12` : "transparent"; e.currentTarget.style.color = isActive ? o.color : "#555"; }}
+                        >
+                          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 13 }}>{o.icon}</span>
+                            <span>
+                              <div style={{ fontSize: 10, letterSpacing: 3, fontWeight: 700 }}>{o.label}</div>
+                              <div style={{ fontSize: 8, letterSpacing: 2, color: "#444", marginTop: 2 }}>{o.desc}</div>
+                            </span>
+                          </span>
+                          {isActive && <span style={{ fontSize: 10, color: o.color }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Description under trigger */}
+                <p style={{ color: "#555", fontSize: 9, letterSpacing: 3, marginTop: 7, fontFamily: "'JetBrains Mono',monospace" }}>
+                  {selected.desc}
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* Create */}
@@ -355,11 +422,6 @@ export default function Home() {
             {loading === "join" ? "..." : "JOIN"}
           </button>
         </div>
-
-        {/* Error */}
-        {error && (
-          <p className="text-[#ff6b6b] text-xs tracking-[3px] mt-4 text-center">{error}</p>
-        )}
 
         {/* Attacks preview */}
         <div className="mt-8 border-t border-[#2a2a2a] pt-5">
@@ -433,6 +495,42 @@ export default function Home() {
         </span>
         <div style={{ width: 24, height: "1px", background: "#3a3a3a" }} />
       </div>
+
+      {/* Error modal — matches GameRoom LeaveModal style */}
+      {error && (
+        <div style={{
+          position: "fixed", inset: 0, background: "#0e0e0ef0",
+          zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 340,
+            border: "1px solid #ff6b6b55",
+            background: "#161616", padding: 32, textAlign: "center",
+            animation: "fade-in .2s ease", position: "relative", overflow: "hidden",
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            {/* top accent line */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, #ff6b6b55, transparent)" }} />
+            <div style={{ fontSize: 9, letterSpacing: 6, color: "#666", marginBottom: 12 }}>TYPO TERROR</div>
+            <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 3, fontFamily: "'Syne', sans-serif", color: "#ff6b6b", marginBottom: 8 }}>
+              NOTICE
+            </div>
+            <div style={{ width: 40, height: 1, background: "#ff6b6b44", margin: "0 auto 20px" }} />
+            <p style={{ color: "#888", fontSize: 10, letterSpacing: 2, lineHeight: 2, marginBottom: 28 }}>
+              {error}
+            </p>
+            <button onClick={() => setError("")} style={{
+              width: "100%", padding: "12px 0", background: "transparent",
+              border: "1px solid #ff6b6b", color: "#ff6b6b",
+              fontSize: 10, letterSpacing: 4, cursor: "pointer",
+              fontFamily: "'JetBrains Mono', monospace", transition: "background .15s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#ff6b6b12"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >DISMISS</button>
+          </div>
+        </div>
+      )}
 
       {/* Info modal */}
       {showInfo && (

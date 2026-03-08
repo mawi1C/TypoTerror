@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { ref, onValue, update, push, off, get, remove, onDisconnect } from "firebase/database";
-import { calcWPM, getAttackForWPM, GAME_DURATION, WORD_QUOTA, PLAYER_KEYS, MAX_PLAYERS, resolveDifficulty, makeWordList } from "@/lib/gameData";
+import { calcWPM, getAttackForWPM, GAME_DURATION, WORD_QUOTA, PLAYER_KEYS, MAX_PLAYERS, resolveDifficulty, makeWordList, HP_MAX, HP_ATTACKS } from "@/lib/gameData";
 import { useRouter } from "next/navigation";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -45,7 +45,8 @@ const glb = `
 // ─── LANE ─────────────────────────────────────────────────────────────────────
 function Lane({ label, accent, words = [], typedCount = 0, currentInput = "",
   wpm = 0, charge = 0, attackReady, onFireAttack,
-  effects = {}, isPlayer, compact = false, quota = null }) {
+  effects = {}, isPlayer, compact = false, quota = null,
+  hp = null, eliminated = false, hpAttackReady = null, isHpMode = false }) {
 
   const visStart = Math.max(0, typedCount - 6);
   const visWords = words.slice(visStart, visStart + (compact ? 22 : 38));
@@ -97,22 +98,33 @@ function Lane({ label, accent, words = [], typedCount = 0, currentInput = "",
           {/* Charge bar (player only, non-compact) */}
           {isPlayer && !compact && (
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              {/* ⚡ label: was T.dim (#333) → now #777 */}
-              <span style={{ fontSize: 8, color: "#777", letterSpacing: 2, fontFamily: T.mono }}>⚡</span>
+              <span style={{ fontSize: 8, color: "#777", letterSpacing: 2, fontFamily: T.mono }}>
+                {isHpMode ? (hpAttackReady === "bomb" ? "💣" : "⚔") : "⚡"}
+              </span>
               <div style={{ width: 72, height: 2, background: T.border, overflow: "hidden" }}>
                 <div style={{
                   height: "100%", transition: "width .25s",
                   width: `${charge}%`,
-                  background: charge >= 100
-                    ? "linear-gradient(90deg,#ffaa00,#ffee44)"
-                    : `linear-gradient(90deg,${accent}99,${accent})`,
-                  boxShadow: charge >= 100 ? "0 0 8px #ffdd44" : `0 0 4px ${accent}55`,
+                  background: isHpMode
+                    ? (hpAttackReady === "bomb"
+                        ? "linear-gradient(90deg,#cc3333,#ff6b6b)"
+                        : hpAttackReady === "strike"
+                          ? "linear-gradient(90deg,#c89a30,#e8b84b)"
+                          : `linear-gradient(90deg,${accent}99,${accent})`)
+                    : (charge >= 100
+                        ? "linear-gradient(90deg,#ffaa00,#ffee44)"
+                        : `linear-gradient(90deg,${accent}99,${accent})`),
+                  boxShadow: isHpMode
+                    ? (hpAttackReady === "bomb" ? "0 0 8px #ff6b6b88" : hpAttackReady === "strike" ? "0 0 6px #e8b84b88" : `0 0 4px ${accent}55`)
+                    : (charge >= 100 ? "0 0 8px #ffdd44" : `0 0 4px ${accent}55`),
                 }}/>
               </div>
               <span style={{
                 fontSize: 10, fontWeight: 700, fontFamily: T.mono,
-                /* charge % color: was T.dim (#333) when not ready → now #777 */
-                color: charge >= 100 ? "#ffdd44" : "#777", minWidth: 30, textAlign: "right",
+                color: isHpMode
+                  ? (hpAttackReady === "bomb" ? "#ff6b6b" : hpAttackReady === "strike" ? "#e8b84b" : "#777")
+                  : (charge >= 100 ? "#ffdd44" : "#777"),
+                minWidth: 30, textAlign: "right",
               }}>{Math.floor(charge)}%</span>
             </div>
           )}
@@ -161,6 +173,33 @@ function Lane({ label, accent, words = [], typedCount = 0, currentInput = "",
         </div>
       )}
 
+      {/* ── HP bar (HP mode only) ── */}
+      {hp !== null && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+            <span style={{ fontSize: 8, letterSpacing: 4, color: "#555", fontFamily: T.mono }}>
+              {eliminated ? "💀 ELIMINATED" : "HP"}
+            </span>
+            <span style={{
+              fontSize: 9, fontWeight: 700, fontFamily: T.mono,
+              color: hp > 50 ? "#6bffb8" : hp > 25 ? "#e8b84b" : "#ff6b6b",
+            }}>{eliminated ? 0 : hp}</span>
+          </div>
+          <div style={{ height: compact ? 3 : 5, background: T.border, overflow: "hidden", borderRadius: 2 }}>
+            <div style={{
+              height: "100%", transition: "width .4s",
+              width: `${eliminated ? 0 : hp}%`,
+              background: hp > 50
+                ? "linear-gradient(90deg,#3bdd8866,#6bffb8)"
+                : hp > 25
+                  ? "linear-gradient(90deg,#c89a3066,#e8b84b)"
+                  : "linear-gradient(90deg,#cc333366,#ff6b6b)",
+              boxShadow: eliminated ? "none" : hp > 50 ? "0 0 6px #6bffb855" : hp > 25 ? "0 0 6px #e8b84b55" : "0 0 8px #ff6b6b77",
+            }}/>
+          </div>
+        </div>
+      )}
+
       {/* ── Word display ── */}
       <div style={{
         height: compact ? 52 : 112,
@@ -169,7 +208,7 @@ function Lane({ label, accent, words = [], typedCount = 0, currentInput = "",
         fontSize: compact ? 13 : 19,
         wordBreak: "keep-all", overflowWrap: "normal", whiteSpace: "normal",
         filter: isBlurred ? "blur(7px)" : "none",
-        opacity: isFrozen ? 0.25 : 1,
+        opacity: isFrozen ? 0.25 : eliminated ? 0.15 : 1,
         transition: "filter .15s, opacity .15s",
         cursor: "text", userSelect: "none",
         fontFamily: T.mono,
@@ -216,26 +255,52 @@ function Lane({ label, accent, words = [], typedCount = 0, currentInput = "",
 
       {/* ── Attack button (player, full size only) ── */}
       {isPlayer && !compact && (
-        <button
-          onClick={onFireAttack}
-          disabled={!attackReady}
-          style={{
-            width: "100%", padding: "11px 0",
-            background: attackReady ? `${attackReady ? "#ffdd4408" : "transparent"}` : "transparent",
-            /* inactive border/text: was T.ghost (#1e1e1e) → #3a3a3a so it's visible */
-            border: `1px solid ${attackReady ? "#ffdd44" : "#3a3a3a"}`,
-            color: attackReady ? "#ffdd44" : "#555",
-            fontSize: 11, letterSpacing: 5,
-            fontFamily: T.mono, fontWeight: 700,
-            cursor: attackReady ? "pointer" : "default",
-            animation: attackReady ? "pulse-glow .9s ease-in-out infinite" : "none",
-            transition: "border-color .2s, color .2s, background .2s",
-          }}
-        >
-          {attackReady
-            ? `▶  ${attackReady.label}   [TAB]`
-            : "▶  CHARGING..."}
-        </button>
+        isHpMode ? (
+          // HP mode: show STRIKE and BOMB buttons
+          <div style={{ display: "flex", gap: 6 }}>
+            {[
+              { id: "strike", label: "⚔ STRIKE", dmg: 15, color: "#e8b84b", ready: hpAttackReady === "strike" || hpAttackReady === "bomb" },
+              { id: "bomb",   label: "💣 BOMB",   dmg: 20, color: "#ff6b6b", ready: hpAttackReady === "bomb" },
+            ].map(a => (
+              <button key={a.id}
+                onClick={a.ready ? onFireAttack : undefined}
+                disabled={!a.ready}
+                style={{
+                  flex: 1, padding: "11px 0",
+                  background: a.ready ? `${a.color}10` : "transparent",
+                  border: `1px solid ${a.ready ? a.color : "#3a3a3a"}`,
+                  color: a.ready ? a.color : "#555",
+                  fontSize: 10, letterSpacing: 4,
+                  fontFamily: T.mono, fontWeight: 700,
+                  cursor: a.ready ? "pointer" : "default",
+                  animation: a.ready ? "pulse-glow .9s ease-in-out infinite" : "none",
+                  transition: "border-color .2s, color .2s, background .2s",
+                }}
+              >
+                {a.ready ? `${a.label}  −${a.dmg}HP  [TAB]` : `${a.label}  −${a.dmg}HP`}
+              </button>
+            ))}
+          </div>
+        ) : (
+          // Classic mode: random attack
+          <button
+            onClick={onFireAttack}
+            disabled={!attackReady}
+            style={{
+              width: "100%", padding: "11px 0",
+              background: attackReady ? "#ffdd4408" : "transparent",
+              border: `1px solid ${attackReady ? "#ffdd44" : "#3a3a3a"}`,
+              color: attackReady ? "#ffdd44" : "#555",
+              fontSize: 11, letterSpacing: 5,
+              fontFamily: T.mono, fontWeight: 700,
+              cursor: attackReady ? "pointer" : "default",
+              animation: attackReady ? "pulse-glow .9s ease-in-out infinite" : "none",
+              transition: "border-color .2s, color .2s, background .2s",
+            }}
+          >
+            {attackReady ? `▶  ${attackReady.label}   [TAB]` : "▶  CHARGING..."}
+          </button>
+        )
       )}
     </div>
   );
@@ -348,6 +413,9 @@ export default function GameRoom({ code }) {
   const [myVote, setMyVote]       = useState(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showStartConfirm, setShowStartConfirm] = useState(false);
+  const [myHp, setMyHp]           = useState(HP_MAX);
+  const [eliminated, setEliminated] = useState(false);
+  const [hpAttackReady, setHpAttackReady] = useState(null); // "strike" | "bomb" | null
 
   const inputRef      = useRef(null);
   const startTime     = useRef(null);
@@ -359,9 +427,21 @@ export default function GameRoom({ code }) {
   const effectsRef    = useRef({});
   const phaseRef      = useRef("lobby");
   const fireAttackRef = useRef(null);
+  const isHpModeRef   = useRef(false);
+  const myHpRef       = useRef(HP_MAX);
+  const hpChargeRef   = useRef(0);
+  const processedAttacksRef = useRef(new Set());
+  const roomDataRef   = useRef(null);
+  const myKeyRef      = useRef("host");
+
+  // keep refs in sync with latest state so closures never go stale
+  myHpRef.current = myHp;
 
   const isDeathMatch = room?.mode === "deathmatch";
+  const isHpMode     = isDeathMatch && room?.dmSubmode === "hp";
+  isHpModeRef.current = isHpMode;
   const myKey    = role || "host";
+  myKeyRef.current = myKey;
   const oppKey   = role === "host" ? "guest" : "host";
   const words    = room?.words || [];
   const myAccent = SLOT_ACCENTS[myKey] || "#6ee7f7";
@@ -394,6 +474,7 @@ export default function GameRoom({ code }) {
     onValue(roomRef, snap => {
       if (!snap.exists()) { router.push("/"); return; }
       const data = snap.val();
+      roomDataRef.current = data;
       setRoom(data);
       if (data.status === "closed" && phaseRef.current !== "closed") {
         const r = sessionStorage.getItem("tb_role");
@@ -408,18 +489,27 @@ export default function GameRoom({ code }) {
       if (data.status === "finished" && phaseRef.current !== "finished") {
         phaseRef.current = "finished"; endGame();
       }
-      // Host triggered play again — non-host players reset to lobby
-      if (data.status === "waiting" && phaseRef.current === "finished") {
+      // Room reset to waiting — everyone goes back to lobby clean
+      if (data.status === "waiting" && (phaseRef.current === "finished" || phaseRef.current === "playing")) {
         phaseRef.current = "lobby";
         setPhase("lobby");
         setTyped(0); setWpm(0); setCharge(0); setAtkReady(null);
         setMyEffects({}); setInput(""); setMyVote(null);
+        setMyHp(HP_MAX); setEliminated(false);
+        myHpRef.current = HP_MAX;
+        hpChargeRef.current = 0; setHpAttackReady(null);
+        processedAttacksRef.current = new Set();
+        typedRef.current = 0; charsRef.current = 0; chargeRef.current = 0;
+        gameActive.current = false;
       }      if (data.attacks) {
         Object.entries(data.attacks).forEach(([key, a]) => {
           const amTarget = data.mode === "deathmatch"
             ? (a.target === "all" && a.from !== role)
             : (a.target === role);
-          if (amTarget && Date.now() - a.ts < 2500 && !a[`proc_${role}`]) {
+          if (amTarget && Date.now() - a.ts < 2500
+              && !a[`proc_${role}`]
+              && !processedAttacksRef.current.has(key)) {
+            processedAttacksRef.current.add(key);
             applyAttack(a);
             update(ref(db, `rooms/${code}/attacks/${key}`), { [`proc_${role}`]: true });
           }
@@ -447,6 +537,9 @@ export default function GameRoom({ code }) {
   const beginGame = useCallback((gameMode) => {
     setPhase("playing"); gameActive.current = true; startTime.current = Date.now();
     setTimeLeft(GAME_DURATION); setInput(""); setTyped(0); setWpm(0); setCharge(0); setAtkReady(null);
+    setMyHp(HP_MAX); setEliminated(false); myHpRef.current = HP_MAX;
+    hpChargeRef.current = 0; setHpAttackReady(null);
+    processedAttacksRef.current = new Set();
     typedRef.current = 0; charsRef.current = 0; chargeRef.current = 0;
     clearInterval(timerRef.current);
     if (gameMode !== "deathmatch") {
@@ -531,19 +624,33 @@ export default function GameRoom({ code }) {
   const handlePlayAgain = async () => {
     const r = sessionStorage.getItem("tb_role");
     if (isDeathMatch) {
-      // Deathmatch: immediate reset (existing behaviour)
-      await update(ref(db, `rooms/${code}/${r}`), {
-        typedCount: 0, chars: 0, wpm: 0, charge: 0, ready: false,
-      });
-      await update(ref(db, `rooms/${code}/votes`), { [r]: null });
       if (r === "host") {
-        await update(ref(db, `rooms/${code}`), {
-          status: "waiting", winner: null, attacks: null, difficulty: null,
+        // Host resets the whole room — everyone's onValue listener handles local state
+        const snap = await get(ref(db, `rooms/${code}`));
+        const d = snap.val();
+        const updates = {};
+        PLAYER_KEYS.forEach(k => {
+          if (d[k]) {
+            updates[`${k}/typedCount`] = 0;
+            updates[`${k}/chars`]      = 0;
+            updates[`${k}/wpm`]        = 0;
+            updates[`${k}/charge`]     = 0;
+            updates[`${k}/ready`]      = false;
+            updates[`${k}/hp`]         = HP_MAX;
+            updates[`${k}/eliminated`] = false;
+            updates[`${k}/wantsPlayAgain`] = false;
+          }
         });
+        updates["votes"]      = null;
+        updates["status"]     = "waiting";
+        updates["winner"]     = null;
+        updates["attacks"]    = null;
+        updates["difficulty"] = null;
+        await update(ref(db, `rooms/${code}`), updates);
+      } else {
+        // Non-host: just flag interest, wait for host to reset
+        await update(ref(db, `rooms/${code}/${r}`), { wantsPlayAgain: true });
       }
-      setTyped(0); setWpm(0); setCharge(0); setAtkReady(null);
-      setMyEffects({}); setInput(""); setMyVote(null);
-      phaseRef.current = "lobby"; setPhase("lobby");
     } else {
       // 1v1: send a play-again request; other player must accept
       await update(ref(db, `rooms/${code}`), { playAgainRequest: r });
@@ -581,15 +688,58 @@ export default function GameRoom({ code }) {
     await update(ref(db, `rooms/${code}`), { playAgainRequest: null });
   };
 
-  const applyAttack = (atk) => {
+  const applyAttack = async (atk) => {
     showBanner(atk.label, "incoming");
+
+    const d        = roomDataRef.current || {};
+    const me       = myKeyRef.current;
+    const hpMode   = d.dmSubmode === "hp";
+
+    if (hpMode) {
+      const dmg  = atk.dmg || 10;
+      const next = Math.max(0, myHpRef.current - dmg);
+      myHpRef.current = next;
+      setMyHp(next);
+
+      if (next <= 0 && gameActive.current) {
+        gameActive.current = false;
+        setEliminated(true);
+
+        // Write this player's elimination first, then do a fresh read to count survivors
+        await update(ref(db, `rooms/${code}/${me}`), { hp: 0, eliminated: true });
+
+        // Fresh snapshot after our write — guaranteed to include our elimination
+        const snap = await get(ref(db, `rooms/${code}`));
+        const fresh = snap.val();
+        const alive = PLAYER_KEYS.filter(k => !!fresh[k] && !fresh[k].eliminated);
+
+
+        const winnerKey = alive.length === 1 ? alive[0]
+                        : alive.length === 0 ? atk.from
+                        : null;
+
+        if (winnerKey) {
+          await update(ref(db, `rooms/${code}`), { status: "finished", winner: winnerKey });
+          phaseRef.current = "finished";
+          endGame();
+        }
+      } else {
+        update(ref(db, `rooms/${code}/${me}`), { hp: next });
+      }
+      return;
+    }
+
+    // Classic / 1v1: apply visual/gameplay effects
     if (atk.id === "reverse") {
       const newT = Math.max(0, typedRef.current - 5);
       typedRef.current = newT; setTyped(newT); setInput("");
-    } else {
+    } else if (atk.id === "bomb") {
+      effectsRef.current = { ...effectsRef.current, bomb: true };
+      setMyEffects(e => ({ ...e, bomb: true }));
+    } else if (atk.dur) {
       effectsRef.current = { ...effectsRef.current, [atk.id]: true };
       setMyEffects(e => ({ ...e, [atk.id]: true }));
-      if (atk.dur) setTimeout(() => {
+      setTimeout(() => {
         delete effectsRef.current[atk.id];
         setMyEffects(e => { const n = { ...e }; delete n[atk.id]; return n; });
       }, atk.dur);
@@ -597,13 +747,31 @@ export default function GameRoom({ code }) {
   };
 
   const fireAttack = async () => {
-    if (!attackReady || !gameActive.current) return;
+    if (!gameActive.current) return;
+
+    if (isHpModeRef.current) {
+      if (!hpAttackReady) return;
+      const atk = HP_ATTACKS.find(a => a.id === hpAttackReady);
+      if (!atk) return;
+      // Reset charge: if bomb fired, back to 0. If strike fired, back to 0.
+      hpChargeRef.current = 0;
+      setCharge(0);
+      setHpAttackReady(null);
+      showBanner(atk.label, "outgoing");
+      await push(ref(db, `rooms/${code}/attacks`), {
+        id: `${Date.now()}`, target: "all", from: myKeyRef.current,
+        ...atk, ts: Date.now(),
+      });
+      return;
+    }
+
+    if (!attackReady) return;
     const atk = attackReady;
     chargeRef.current = 0; setCharge(0); setAtkReady(null);
     showBanner(atk.label, "outgoing");
     const target = isDeathMatch ? "all" : oppKey;
     await push(ref(db, `rooms/${code}/attacks`), {
-      id: `${Date.now()}`, target, from: myKey, ...atk, ts: Date.now(),
+      id: `${Date.now()}`, target, from: myKeyRef.current, ...atk, ts: Date.now(),
     });
   };
 
@@ -626,11 +794,26 @@ export default function GameRoom({ code }) {
         typedRef.current = newTyped; charsRef.current = newChars;
         setTyped(newTyped); setInput("");
         const w = calcWPM(newChars, startTime.current); setWpm(w);
-        const newCharge = Math.min(100, chargeRef.current + 9 + Math.floor(w / 18));
-        chargeRef.current = newCharge; setCharge(newCharge);
-        if (newCharge >= 100) { const atk = getAttackForWPM(w); if (atk) setAtkReady(atk); }
-        update(ref(db, `rooms/${code}/${myKey}`), { typedCount: newTyped, chars: newChars, wpm: w, charge: newCharge });
-        if (newTyped >= WORD_QUOTA) {
+
+        if (isHpModeRef.current) {
+          // HP mode: single charge bar 0–200. 100 = STRIKE ready, 200 = BOMB ready
+          const newHpCharge = Math.min(200, hpChargeRef.current + 12 + Math.floor(w / 15));
+          hpChargeRef.current = newHpCharge;
+          // Show charge as 0–100% of whichever tier we're on
+          const displayCharge = newHpCharge >= 100
+            ? 100
+            : newHpCharge;
+          setCharge(displayCharge);
+          if (newHpCharge >= 200) setHpAttackReady("bomb");
+          else if (newHpCharge >= 100) setHpAttackReady("strike");
+          update(ref(db, `rooms/${code}/${myKey}`), { typedCount: newTyped, chars: newChars, wpm: w, charge: displayCharge });
+        } else {
+          const newCharge = Math.min(100, chargeRef.current + 9 + Math.floor(w / 18));
+          chargeRef.current = newCharge; setCharge(newCharge);
+          if (newCharge >= 100) { const atk = getAttackForWPM(w); if (atk) setAtkReady(atk); }
+          update(ref(db, `rooms/${code}/${myKey}`), { typedCount: newTyped, chars: newChars, wpm: w, charge: newCharge });
+        }
+        if (newTyped >= WORD_QUOTA && !isHpMode) {
           get(ref(db, `rooms/${code}/mode`)).then(s => {
             if (s.val() === "deathmatch") {
               gameActive.current = false;
@@ -808,7 +991,9 @@ export default function GameRoom({ code }) {
             </div>
 
             <p style={{ fontSize: 8, letterSpacing: 4, color: "#555", textAlign: "center", marginBottom: 16, fontFamily: T.mono }}>
-              FIRST TO {WORD_QUOTA} WORDS WINS · ATTACKS HIT ALL
+              {isHpMode
+                ? "DEAL DAMAGE WITH ATTACKS · LAST ONE STANDING WINS"
+                : `FIRST TO ${WORD_QUOTA} WORDS WINS · ATTACKS HIT ALL`}
             </p>
 
             {/* Player slots */}
@@ -1016,20 +1201,26 @@ export default function GameRoom({ code }) {
       const allPlayers = PLAYER_KEYS
         .filter(k => !!room[k])
         .map(k => ({ key: k, ...room[k], accent: SLOT_ACCENTS[k] }))
-        .sort((a, b) => b.typedCount - a.typedCount);
+        .sort((a, b) => isHpMode
+          ? (b.hp ?? 0) - (a.hp ?? 0)   // HP mode: sort by remaining HP
+          : b.typedCount - a.typedCount); // Classic: sort by words typed
 
       return (
         <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg, padding: "20px 16px" }}>
           <style>{glb}</style>
           <div style={{ textAlign: "center", maxWidth: 620, width: "100%", animation: "fade-in .4s ease" }}>
             {/* label: was T.dim (#333) → #666 */}
-            <div style={{ fontSize: 9, letterSpacing: 6, color: T.dim, marginBottom: 12, fontFamily: T.mono }}>DEATHMATCH · RESULT</div>
+            <div style={{ fontSize: 9, letterSpacing: 6, color: T.dim, marginBottom: 12, fontFamily: T.mono }}>
+              {isHpMode ? "DEATHMATCH · HP · RESULT" : "DEATHMATCH · RESULT"}
+            </div>
             <div style={{ fontSize: 56, fontWeight: 900, letterSpacing: 5, fontFamily: T.syne, color: accent, textShadow: `0 0 40px ${accent}33`, marginBottom: 4, lineHeight: 1, textAlign: "center", whiteSpace: "nowrap" }}>
               {iWon ? "VICTORY" : "DEFEATED"}
             </div>
             {/* winner name: was T.muted (#555) → #888 */}
             <p style={{ color: T.muted, fontSize: 9, letterSpacing: 6, marginBottom: 32, fontFamily: T.mono }}>
-              {winnerName.toUpperCase()} · FIRST TO {WORD_QUOTA} WORDS
+              {isHpMode
+                ? `${winnerName.toUpperCase()} · LAST STANDING`
+                : `${winnerName.toUpperCase()} · FIRST TO ${WORD_QUOTA} WORDS`}
             </p>
 
             {/* Scoreboard */}
@@ -1053,10 +1244,12 @@ export default function GameRoom({ code }) {
                       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, #ffdd4488, #ffdd4422, transparent)" }} />
                     )}
                     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                      {/* rank number / crown */}
+                    {/* rank number / crown / skull */}
                       {isWinner
                         ? <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>👑</span>
-                        : <span style={{ fontSize: 15, fontWeight: 900, color: "#555", fontFamily: T.syne, minWidth: 22 }}>{i + 1}</span>
+                        : isHpMode && p.eliminated
+                          ? <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>💀</span>
+                          : <span style={{ fontSize: 15, fontWeight: 900, color: "#555", fontFamily: T.syne, minWidth: 22 }}>{i + 1}</span>
                       }
                       <span style={{ width: isWinner ? 7 : 5, height: isWinner ? 7 : 5, borderRadius: "50%", background: p.accent, flexShrink: 0, boxShadow: isWinner ? `0 0 8px ${p.accent}` : "none" }}/>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
@@ -1073,31 +1266,87 @@ export default function GameRoom({ code }) {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 20 }}>
-                      <Stat label="WPM"   v={p.wpm || 0}        color={isWinner ? "#ffdd44" : p.accent} small />
-                      <Stat label="WORDS" v={p.typedCount || 0} color={isWinner ? "#ffdd4488" : T.muted} small />
+                      <Stat label="WPM" v={p.wpm || 0} color={isWinner ? "#ffdd44" : p.accent} small />
+                      {isHpMode
+                        ? <Stat label="HP LEFT" v={p.eliminated ? 0 : (p.hp ?? HP_MAX)} color={isWinner ? "#6bffb8" : "#ff6b6b88"} small />
+                        : <Stat label="WORDS" v={p.typedCount || 0} color={isWinner ? "#ffdd4488" : T.muted} small />
+                      }
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              <button onClick={handlePlayAgain} style={{
-                border: `1px solid #6ee7f7`, color: "#6ee7f7", padding: "13px 32px",
-                fontSize: 12, letterSpacing: 5, fontFamily: T.mono, background: "transparent", cursor: "pointer",
-                transition: "background .15s",
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = "#6ee7f712"}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-              >↺ PLAY AGAIN</button>
-              <button onClick={handleLeave} style={{
-                border: `1px solid ${T.border}`, color: T.muted, padding: "13px 32px",
-                fontSize: 12, letterSpacing: 5, fontFamily: T.mono, background: "transparent", cursor: "pointer",
-                transition: "all .15s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff6b6b"; e.currentTarget.style.color = "#ff6b6b"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.muted; }}
-              >← LEAVE</button>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexDirection: "column", alignItems: "center" }}>
+              {(() => {
+                const isHost = myKey === "host";
+                const iWantPlayAgain = room?.[myKey]?.wantsPlayAgain;
+                const presentPlayers = PLAYER_KEYS.filter(k => !!room?.[k]);
+                const wantingCount = presentPlayers.filter(k => k !== "host" && !!room?.[k]?.wantsPlayAgain).length;
+                const nonHostCount = presentPlayers.filter(k => k !== "host").length;
+
+                if (isHost) {
+                  // Host sees who wants to play again, and controls the restart
+                  return (
+                    <>
+                      {nonHostCount > 0 && (
+                        <p style={{ fontSize: 9, letterSpacing: 3, color: T.muted, fontFamily: T.mono, marginBottom: 4 }}>
+                          {wantingCount}/{nonHostCount} PLAYER{nonHostCount > 1 ? "S" : ""} WANT REMATCH
+                        </p>
+                      )}
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={handlePlayAgain} style={{
+                          border: `1px solid #6ee7f7`, color: "#6ee7f7", padding: "13px 32px",
+                          fontSize: 12, letterSpacing: 5, fontFamily: T.mono, background: "transparent", cursor: "pointer",
+                          transition: "background .15s",
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#6ee7f712"}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        >↺ PLAY AGAIN</button>
+                        <button onClick={handleLeave} style={{
+                          border: `1px solid ${T.border}`, color: T.muted, padding: "13px 32px",
+                          fontSize: 12, letterSpacing: 5, fontFamily: T.mono, background: "transparent", cursor: "pointer",
+                          transition: "all .15s",
+                        }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff6b6b"; e.currentTarget.style.color = "#ff6b6b"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.muted; }}
+                        >← LEAVE</button>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Non-host: flag interest and wait for host
+                return (
+                  <>
+                    <p style={{ fontSize: 9, letterSpacing: 3, color: T.muted, fontFamily: T.mono, marginBottom: 4 }}>
+                      {iWantPlayAgain ? "WAITING FOR HOST TO RESTART..." : "HOST CONTROLS THE RESTART"}
+                    </p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={handlePlayAgain} disabled={iWantPlayAgain} style={{
+                        border: `1px solid ${iWantPlayAgain ? "#4aaa5a" : "#6ee7f7"}`,
+                        color: iWantPlayAgain ? "#4aaa5a" : "#6ee7f7",
+                        padding: "13px 32px", fontSize: 12, letterSpacing: 5,
+                        fontFamily: T.mono, background: "transparent",
+                        cursor: iWantPlayAgain ? "default" : "pointer",
+                        opacity: iWantPlayAgain ? 0.6 : 1,
+                        transition: "all .15s",
+                      }}
+                        onMouseEnter={e => { if (!iWantPlayAgain) e.currentTarget.style.background = "#6ee7f712"; }}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                      >{iWantPlayAgain ? "✓ READY" : "↺ PLAY AGAIN"}</button>
+                      <button onClick={handleLeave} style={{
+                        border: `1px solid ${T.border}`, color: T.muted, padding: "13px 32px",
+                        fontSize: 12, letterSpacing: 5, fontFamily: T.mono, background: "transparent", cursor: "pointer",
+                        transition: "all .15s",
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff6b6b"; e.currentTarget.style.color = "#ff6b6b"; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.muted; }}
+                      >← LEAVE</button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </main>
@@ -1342,11 +1591,21 @@ export default function GameRoom({ code }) {
         {/* Timer / quota */}
         {isDeathMatch ? (
           <div style={{ textAlign: "center" }}>
-            {/* FIRST TO: was T.ghost (#1e1e1e) → #555 */}
-            <div style={{ fontSize: 8, letterSpacing: 4, color: "#555", fontFamily: T.mono }}>FIRST TO</div>
-            <div style={{ fontSize: 24, fontWeight: 900, fontFamily: T.syne, color: "#e8b84b", lineHeight: 1.1 }}>{WORD_QUOTA}</div>
-            {/* WORDS: was T.ghost (#1e1e1e) → #555 */}
-            <div style={{ fontSize: 8, letterSpacing: 3, color: "#555", fontFamily: T.mono }}>WORDS</div>
+            {isHpMode ? (
+              <>
+                <div style={{ fontSize: 8, letterSpacing: 4, color: "#555", fontFamily: T.mono }}>MODE</div>
+                <div style={{ fontSize: 18, fontWeight: 900, fontFamily: T.syne, color: "#ff6b6b", lineHeight: 1.1 }}>❤ HP</div>
+                <div style={{ fontSize: 8, letterSpacing: 3, color: "#555", fontFamily: T.mono }}>SURVIVAL</div>
+              </>
+            ) : (
+              <>
+                {/* FIRST TO: was T.ghost (#1e1e1e) → #555 */}
+                <div style={{ fontSize: 8, letterSpacing: 4, color: "#555", fontFamily: T.mono }}>FIRST TO</div>
+                <div style={{ fontSize: 24, fontWeight: 900, fontFamily: T.syne, color: "#e8b84b", lineHeight: 1.1 }}>{WORD_QUOTA}</div>
+                {/* WORDS: was T.ghost (#1e1e1e) → #555 */}
+                <div style={{ fontSize: 8, letterSpacing: 3, color: "#555", fontFamily: T.mono }}>WORDS</div>
+              </>
+            )}
           </div>
         ) : (
           <div style={{ textAlign: "center" }}>
@@ -1379,7 +1638,9 @@ export default function GameRoom({ code }) {
             <Lane label={myName.toUpperCase()} accent={myAccent} words={words}
               typedCount={typedCount} currentInput={input} wpm={wpm} charge={charge}
               attackReady={attackReady} onFireAttack={fireAttack}
-              effects={myEffects} isPlayer quota={WORD_QUOTA} />
+              effects={myEffects} isPlayer quota={isHpMode ? null : WORD_QUOTA}
+              hp={isHpMode ? myHp : null} eliminated={eliminated}
+              hpAttackReady={hpAttackReady} isHpMode={isHpMode} />
           </div>
 
           {/* Divider */}
@@ -1397,7 +1658,10 @@ export default function GameRoom({ code }) {
             {opponents.map(opp => (
               <Lane key={opp.key} label={(opp.name || "???").toUpperCase()} accent={opp.accent}
                 words={words} typedCount={opp.typedCount || 0} wpm={opp.wpm || 0}
-                charge={opp.charge || 0} effects={{}} isPlayer={false} compact quota={WORD_QUOTA} />
+                charge={opp.charge || 0} effects={{}} isPlayer={false} compact
+                quota={isHpMode ? null : WORD_QUOTA}
+                hp={isHpMode ? (opp.hp ?? HP_MAX) : null}
+                eliminated={!!opp.eliminated} />
             ))}
           </div>
         </div>

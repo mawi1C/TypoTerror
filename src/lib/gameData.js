@@ -63,12 +63,23 @@ export function resolveDifficulty(votes) {
 
 // ─── ATTACKS ─────────────────────────────────────────────────────────────────
 export const ATTACKS = [
-  { id: "blur",    label: "👁 BLIND",   desc: "Blurs opponent text for 3s",       wpm: 20, dur: 3000 },
-  { id: "shake",   label: "💥 QUAKE",   desc: "Shakes opponent screen for 2s",    wpm: 30, dur: 2000 },
-  { id: "ghost",   label: "👻 GHOST",   desc: "Hides opponent typed chars",       wpm: 40, dur: 3000 },
-  { id: "freeze",  label: "❄ FREEZE",  desc: "Freezes opponent keyboard for 2s", wpm: 50, dur: 2000 },
-  { id: "reverse", label: "🔄 REWIND",  desc: "Deletes 5 opponent words",         wpm: 60, dur: 0    },
-  { id: "bomb",    label: "💣 BOMB",    desc: "Adds 10 words to opponent",        wpm: 75, dur: 0    },
+  { id: "blur",    label: "👁 BLIND",   desc: "Blurs opponent text for 3s",       wpm: 20, dur: 3000, dmg: 8  },
+  { id: "shake",   label: "💥 QUAKE",   desc: "Shakes opponent screen for 2s",    wpm: 30, dur: 2000, dmg: 12 },
+  { id: "ghost",   label: "👻 GHOST",   desc: "Hides opponent typed chars",       wpm: 40, dur: 3000, dmg: 16 },
+  { id: "freeze",  label: "❄ FREEZE",  desc: "Freezes opponent keyboard for 2s", wpm: 50, dur: 2000, dmg: 22 },
+  { id: "reverse", label: "🔄 REWIND",  desc: "Deletes 5 opponent words",         wpm: 60, dur: 0,    dmg: 28 },
+  { id: "bomb",    label: "💣 BOMB",    desc: "Adds 10 words to opponent",        wpm: 75, dur: 0,    dmg: 35 },
+];
+
+// ─── HP MODE ─────────────────────────────────────────────────────────────────
+export const HP_MAX              = 100;
+export const HP_ATTACKS = [
+  { id: "strike", label: "⚔ STRIKE", desc: "Deals 15 damage",  dmg: 15, color: "#e8b84b", chargeNeeded: 100 },
+  { id: "bomb",   label: "💣 BOMB",   desc: "Deals 20 damage",  dmg: 20, color: "#ff6b6b", chargeNeeded: 200 },
+];
+export const DEATHMATCH_SUBMODES = [
+  { id: "classic", label: "⚡ CLASSIC", color: "#e8b84b", desc: "First to 50 words wins"         },
+  { id: "hp",      label: "❤ HP",      color: "#ff6b6b", desc: "Deal damage · last one standing" },
 ];
 
 export const GAME_DURATION = 60;
