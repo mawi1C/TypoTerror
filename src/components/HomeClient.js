@@ -274,7 +274,7 @@ export default function Home() {
       <div className="w-full max-w-md" style={{ position: "relative", zIndex: 1 }}>
 
         {/* Logo */}
-        <div className="text-center -mb-12 -mt-16">
+        <div className="text-center -mb-16 -mt-16">
           <div className="flex justify-center">
             <Image src={TypoLogo} alt="Typo Terror Logo" width={600} height={200} priority />
           </div>
@@ -502,13 +502,13 @@ export default function Home() {
               NOTICE
             </div>
             <div style={{ width: 40, height: 1, background: "#ff6b6b44", margin: "0 auto 20px" }} />
-            <p style={{ color: "#999", fontSize: 10, letterSpacing: 2, lineHeight: 2, marginBottom: 28 }}>
+            <p style={{ color: "#999", fontSize: 12, letterSpacing: 2, lineHeight: 2, marginBottom: 28 }}>
               {error}
             </p>
             <button onClick={() => setError("")} style={{
               width: "100%", padding: "12px 0", background: "transparent",
               border: "1px solid #ff6b6b", color: "#ff6b6b",
-              fontSize: 10, letterSpacing: 4, cursor: "pointer",
+              fontSize: 12, letterSpacing: 4, cursor: "pointer",
               fontFamily: "'JetBrains Mono', monospace", transition: "background .15s",
             }}
               onMouseEnter={e => e.currentTarget.style.background = "#ff6b6b12"}
