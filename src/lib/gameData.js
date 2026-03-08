@@ -18,15 +18,20 @@ export const WORDS = [
 ];
 
 export const ATTACKS = [
-  { id: "blur",    label: "👁 BLIND",   desc: "Blurs opponent text for 3s",      wpm: 20, dur: 3000 },
-  { id: "shake",   label: "💥 QUAKE",   desc: "Shakes opponent screen for 2s",   wpm: 30, dur: 2000 },
-  { id: "ghost",   label: "👻 GHOST",   desc: "Hides opponent typed chars",      wpm: 40, dur: 3000 },
-  { id: "freeze",  label: "❄ FREEZE",  desc: "Freezes opponent keyboard for 2s",wpm: 50, dur: 2000 },
-  { id: "reverse", label: "🔄 REWIND",  desc: "Deletes 5 opponent words",        wpm: 60, dur: 0    },
-  { id: "bomb",    label: "💣 BOMB",    desc: "Adds 10 words to opponent",       wpm: 75, dur: 0    },
+  { id: "blur",    label: "👁 BLIND",   desc: "Blurs opponent text for 3s",       wpm: 20, dur: 3000 },
+  { id: "shake",   label: "💥 QUAKE",   desc: "Shakes opponent screen for 2s",    wpm: 30, dur: 2000 },
+  { id: "ghost",   label: "👻 GHOST",   desc: "Hides opponent typed chars",       wpm: 40, dur: 3000 },
+  { id: "freeze",  label: "❄ FREEZE",  desc: "Freezes opponent keyboard for 2s", wpm: 50, dur: 2000 },
+  { id: "reverse", label: "🔄 REWIND",  desc: "Deletes 5 opponent words",         wpm: 60, dur: 0    },
+  { id: "bomb",    label: "💣 BOMB",    desc: "Adds 10 words to opponent",        wpm: 75, dur: 0    },
 ];
 
-export const GAME_DURATION = 60; // seconds
+export const GAME_DURATION = 60; // seconds — used by 1v1
+export const WORD_QUOTA    = 50; // words to win deathmatch
+export const MAX_PLAYERS   = 5;  // max players in deathmatch
+
+// Slot keys in order: host is always first, then p2..p5
+export const PLAYER_KEYS = ["host", "p2", "p3", "p4", "p5"];
 
 export function makeWordList(n = 120) {
   const out = [];
