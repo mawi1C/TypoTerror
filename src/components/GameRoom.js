@@ -2,8 +2,8 @@
 // src/components/GameRoom.js
 import { useEffect, useRef, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { ref, onValue, update, push, off, get } from "firebase/database";
-import { calcWPM, getAttackForWPM, GAME_DURATION, WORD_QUOTA, PLAYER_KEYS } from "@/lib/gameData";
+import { ref, onValue, update, push, off, get, remove } from "firebase/database";
+import { calcWPM, getAttackForWPM, GAME_DURATION, WORD_QUOTA, PLAYER_KEYS, DIFFICULTY_LABELS, resolveDifficulty, makeWordList } from "@/lib/gameData";
 import { useRouter } from "next/navigation";
 
 const SLOT_ACCENTS = {
@@ -155,6 +155,61 @@ function Lane({ label, accent, words = [], typedCount = 0, currentInput = "", wp
   );
 }
 
+// ─── VOTE PANEL ───────────────────────────────────────────────────────────────
+function VotePanel({ votes = {}, myVote, onVote, presentKeys = [] }) {
+  const DIFFS = ["easy", "medium", "hard"];
+  const DIFF_META = {
+    easy:   { label: "EASY",   color: "#6bffb8", desc: "common short words" },
+    medium: { label: "MEDIUM", color: "#e8b84b", desc: "everyday vocabulary" },
+    hard:   { label: "HARD",   color: "#ff6b6b", desc: "contractions & tricky words" },
+  };
+  const tally = { easy: 0, medium: 0, hard: 0 };
+  Object.values(votes).forEach(v => { if (tally[v] !== undefined) tally[v]++; });
+  const total = presentKeys.length || 1;
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p style={{ fontSize: 9, letterSpacing: 5, color: "#333", marginBottom: 10, fontFamily: "'JetBrains Mono',monospace" }}>
+        VOTE DIFFICULTY
+      </p>
+      <div style={{ display: "flex", gap: 6 }}>
+        {DIFFS.map(d => {
+          const meta    = DIFF_META[d];
+          const count   = tally[d];
+          const isMyPick = myVote === d;
+          return (
+            <button key={d} onClick={() => onVote(d)} style={{
+              flex: 1, padding: "10px 6px", background: isMyPick ? `${meta.color}18` : "transparent",
+              border: `1px solid ${isMyPick ? meta.color : "#1e1e1e"}`,
+              color: isMyPick ? meta.color : "#444",
+              fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+              transition: "all 0.15s",
+            }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, fontWeight: 700, marginBottom: 3 }}>{meta.label}</div>
+              <div style={{ fontSize: 8, color: isMyPick ? meta.color : "#333", marginBottom: 5 }}>{meta.desc}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: count > 0 ? meta.color : "#222" }}>
+                {count > 0 ? `${count} vote${count > 1 ? "s" : ""}` : "—"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {/* Show who voted for what */}
+      <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+        {presentKeys.map(k => {
+          const v = votes[k];
+          const ac = { easy: "#6bffb8", medium: "#e8b84b", hard: "#ff6b6b" }[v] || "#333";
+          return (
+            <span key={k} style={{ fontSize: 8, letterSpacing: 2, color: v ? ac : "#222", fontFamily: "'JetBrains Mono',monospace" }}>
+              {k === "host" ? "HOST" : k.toUpperCase()} {v ? `→ ${v.toUpperCase()}` : "· waiting"}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function GameRoom({ code }) {
   const router = useRouter();
   const [role, setRole]           = useState(null);
@@ -171,6 +226,8 @@ export default function GameRoom({ code }) {
   const [banner, setBanner]       = useState(null);
   const [gamePhase, setPhase]     = useState("lobby");
   const [mounted, setMounted]     = useState(false);
+  const [myVote, setMyVote]       = useState(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const inputRef      = useRef(null);
   const startTime     = useRef(null);
@@ -206,6 +263,10 @@ export default function GameRoom({ code }) {
       if (!snap.exists()) { router.push("/"); return; }
       const data = snap.val();
       setRoom(data);
+      if (data.status === "closed" && phaseRef.current !== "closed") {
+        const r = sessionStorage.getItem("tb_role");
+        if (r !== "host") { phaseRef.current = "closed"; setPhase("closed"); }
+      }
       if (data.status === "countdown" && phaseRef.current === "lobby") {
         phaseRef.current = "countdown"; startCountdown();
       }
@@ -258,24 +319,52 @@ export default function GameRoom({ code }) {
   const endGame = () => { setPhase("finished"); gameActive.current = false; clearInterval(timerRef.current); };
   useEffect(() => () => clearInterval(timerRef.current), []);
 
+  const handleVote = async (diff) => {
+    const r = sessionStorage.getItem("tb_role");
+    setMyVote(diff);
+    await update(ref(db, `rooms/${code}/votes`), { [r]: diff });
+  };
+
   const handleReady = async () => {
+    if (!myVote) return; // must vote first
     const r = sessionStorage.getItem("tb_role");
     await update(ref(db, `rooms/${code}/${r}`), { ready: true });
     const snap = await get(ref(db, `rooms/${code}`));
     const d = snap.val();
+
+    // Resolve difficulty from votes
+    const votes = d.votes || {};
+    const difficulty = resolveDifficulty(votes);
+    const words = makeWordList(120, difficulty);
+
     if (d.mode === "deathmatch") {
       const presentKeys = PLAYER_KEYS.filter(k => !!d[k]);
       const allReady    = presentKeys.every(k => d[k]?.ready);
       if (allReady && presentKeys.length >= 2 && r === "host") {
-        await update(ref(db, `rooms/${code}`), { status: "countdown" });
+        await update(ref(db, `rooms/${code}`), { status: "countdown", difficulty, words });
         setTimeout(() => update(ref(db, `rooms/${code}`), { status: "playing" }), 3200);
       }
     } else {
       if (d.host?.ready && d.guest?.ready) {
-        await update(ref(db, `rooms/${code}`), { status: "countdown" });
+        await update(ref(db, `rooms/${code}`), { status: "countdown", difficulty, words });
         setTimeout(() => update(ref(db, `rooms/${code}`), { status: "playing" }), 3200);
       }
     }
+  };
+
+  const handleLeave = async () => {
+    const r = sessionStorage.getItem("tb_role");
+    if (r === "host") {
+      // Mark room as closed so guests see a notification, then delete after a delay
+      await update(ref(db, `rooms/${code}`), { status: "closed" });
+      setTimeout(() => remove(ref(db, `rooms/${code}`)), 8000);
+    } else {
+      // Non-host: just remove their own slot so others remain unaffected
+      await remove(ref(db, `rooms/${code}/${r}`));
+    }
+    sessionStorage.removeItem("tb_name");
+    sessionStorage.removeItem("tb_role");
+    router.push("/");
   };
 
   const applyAttack = (atk) => {
@@ -341,14 +430,75 @@ export default function GameRoom({ code }) {
 
   const showBanner = (label, dir) => { setBanner({ label, dir }); setTimeout(() => setBanner(null), 1500); };
 
+  // ── ROOM CLOSED ──
+  if (gamePhase === "closed") {
+    const isDeathMatchClosed = room?.mode === "deathmatch";
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0e0e0e", padding: "0 16px" }}>
+        <div style={{ textAlign: "center", maxWidth: 360, width: "100%" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🚪</div>
+          <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", color: "#ff6b6b", marginBottom: 10 }}>
+            ROOM CLOSED
+          </div>
+          <p style={{ color: "#555", fontSize: 11, letterSpacing: 3, lineHeight: 2, marginBottom: 8, fontFamily: "'JetBrains Mono',monospace" }}>
+            The host has closed this room.
+          </p>
+          <p style={{ color: "#333", fontSize: 9, letterSpacing: 3, marginBottom: 36, fontFamily: "'JetBrains Mono',monospace" }}>
+            {isDeathMatchClosed ? "💀 DEATHMATCH · ROOM DISBANDED" : "⚔ 1V1 · ROOM DISBANDED"}
+          </p>
+          <button onClick={() => { sessionStorage.removeItem("tb_name"); sessionStorage.removeItem("tb_role"); router.push("/"); }} style={{
+            width: "100%", border: "1px solid #e8b84b", color: "#e8b84b", padding: "14px 0",
+            fontSize: 12, letterSpacing: 5, fontFamily: "'JetBrains Mono',monospace",
+            background: "transparent", cursor: "pointer",
+          }}>
+            ← BACK TO HOME
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   // ── LOBBY ──
   if (gamePhase === "lobby") {
     const me = room?.[myKey];
 
     if (isDeathMatch) {
       const presentPlayers = PLAYER_KEYS.filter(k => !!room?.[k]);
+      const isHost = myKey === "host";
       return (
         <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#0e0e0e" }}>
+
+          {/* ── Leave confirmation modal ── */}
+          {showLeaveConfirm && (
+            <div style={{
+              position: "fixed", inset: 0, background: "#0e0e0eee", zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px",
+            }}>
+              <div style={{ width: "100%", maxWidth: 360, border: "1px solid #2a2a2a", background: "#111", padding: 32, textAlign: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", color: "#ff6b6b", marginBottom: 12 }}>
+                  LEAVE ROOM?
+                </div>
+                <p style={{ color: "#555", fontSize: 11, letterSpacing: 2, lineHeight: 1.8, marginBottom: 24, fontFamily: "'JetBrains Mono',monospace" }}>
+                  {isHost
+                    ? "You are the HOST. Leaving will\nclose the room and disconnect\nall players."
+                    : "You will be removed from the\nroom. Other players will stay."}
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setShowLeaveConfirm(false)} style={{
+                    flex: 1, padding: "12px 0", background: "transparent",
+                    border: "1px solid #2a2a2a", color: "#555",
+                    fontSize: 11, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+                  }}>CANCEL</button>
+                  <button onClick={handleLeave} style={{
+                    flex: 1, padding: "12px 0", background: "transparent",
+                    border: "1px solid #ff6b6b", color: "#ff6b6b",
+                    fontSize: 11, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+                  }}>LEAVE</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ width: "100%", maxWidth: 440, textAlign: "center" }}>
             <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", marginBottom: 4 }}>
               <span style={{ color: "#e8e0c8" }}>TYPO</span><span style={{ color: "#ff6b6b" }}>TERROR</span>
@@ -389,25 +539,76 @@ export default function GameRoom({ code }) {
             {presentPlayers.length < 2 && (
               <p style={{ color: "#444", fontSize: 10, letterSpacing: 3, marginBottom: 12 }}>waiting for players... ({presentPlayers.length}/5)</p>
             )}
-            <button onClick={handleReady} disabled={presentPlayers.length < 2 || me?.ready} style={{
+            {presentPlayers.length >= 2 && (
+              <VotePanel
+                votes={room?.votes || {}} myVote={myVote}
+                onVote={handleVote} presentKeys={presentPlayers}
+              />
+            )}
+            <button onClick={handleReady} disabled={presentPlayers.length < 2 || !myVote || me?.ready} style={{
               width: "100%", border: "1px solid #ff6b6b", color: "#ff6b6b", padding: "14px 0",
               fontSize: 13, letterSpacing: 5, fontFamily: "'JetBrains Mono',monospace",
               background: "transparent", cursor: "pointer",
-              opacity: (presentPlayers.length < 2 || me?.ready) ? 0.3 : 1,
+              opacity: (presentPlayers.length < 2 || !myVote || me?.ready) ? 0.3 : 1,
             }}>
-              {me?.ready ? "✓ READY" : "READY UP"}
+              {me?.ready ? "✓ READY" : !myVote ? "VOTE TO UNLOCK" : "READY UP"}
             </button>
             <p style={{ color: "#222", fontSize: 9, letterSpacing: 3, marginTop: 10, fontFamily: "'JetBrains Mono',monospace" }}>
               game starts when all players ready
             </p>
+            <button onClick={() => setShowLeaveConfirm(true)} style={{
+              marginTop: 20, background: "transparent",
+              border: "1px solid #2a2a2a", color: "#555",
+              fontSize: 10, letterSpacing: 4, padding: "10px 0", width: "100%",
+              fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+              transition: "border-color 0.15s, color 0.15s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#ff6b6b"; e.currentTarget.style.borderColor = "#ff6b6b"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#555"; e.currentTarget.style.borderColor = "#2a2a2a"; }}
+            >
+              ← {isHost ? "CLOSE ROOM" : "LEAVE ROOM"}
+            </button>
           </div>
         </main>
       );
     }
 
     const opp = room?.[oppKey];
+    const isHost1v1 = myKey === "host";
     return (
       <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#0e0e0e" }}>
+
+        {/* ── Leave confirmation modal ── */}
+        {showLeaveConfirm && (
+          <div style={{
+            position: "fixed", inset: 0, background: "#0e0e0eee", zIndex: 100,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px",
+          }}>
+            <div style={{ width: "100%", maxWidth: 360, border: "1px solid #2a2a2a", background: "#111", padding: 32, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", color: "#e8b84b", marginBottom: 12 }}>
+                LEAVE ROOM?
+              </div>
+              <p style={{ color: "#555", fontSize: 11, letterSpacing: 2, lineHeight: 1.8, marginBottom: 24, fontFamily: "'JetBrains Mono',monospace" }}>
+                {isHost1v1
+                  ? "You are the HOST. Leaving will\nclose the room and kick your\nopponent."
+                  : "You will leave the room.\nThe host will remain."}
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setShowLeaveConfirm(false)} style={{
+                  flex: 1, padding: "12px 0", background: "transparent",
+                  border: "1px solid #2a2a2a", color: "#555",
+                  fontSize: 11, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+                }}>CANCEL</button>
+                <button onClick={handleLeave} style={{
+                  flex: 1, padding: "12px 0", background: "transparent",
+                  border: "1px solid #e8b84b", color: "#e8b84b",
+                  fontSize: 11, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+                }}>LEAVE</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
           <h1 style={{ fontSize: 36, fontWeight: 900, letterSpacing: 4, fontFamily: "'Syne',sans-serif", marginBottom: 4 }}>
             <span style={{ color: "#e8e0c8" }}>TYPO</span><span style={{ color: "#e8b84b" }}>TERROR</span>
@@ -427,12 +628,30 @@ export default function GameRoom({ code }) {
             <PlayerSlot name={opp?.name} label={role === "host" ? "GUEST" : "HOST"} accent="#ff6b6b" ready={opp?.ready}/>
           </div>
           {!opp && <p style={{ color: "#444", fontSize: 10, letterSpacing: 3, marginBottom: 16 }}>waiting for opponent...</p>}
-          <button onClick={handleReady} disabled={!opp || me?.ready} style={{
+          {opp && (
+            <VotePanel
+              votes={room?.votes || {}} myVote={myVote}
+              onVote={handleVote} presentKeys={["host", "guest"]}
+            />
+          )}
+          <button onClick={handleReady} disabled={!opp || !myVote || me?.ready} style={{
             width: "100%", border: "1px solid #e8b84b", color: "#e8b84b", padding: "14px 0",
             fontSize: 13, letterSpacing: 5, fontFamily: "'JetBrains Mono',monospace",
-            background: "transparent", cursor: "pointer", opacity: (!opp || me?.ready) ? 0.3 : 1,
+            background: "transparent", cursor: "pointer", opacity: (!opp || !myVote || me?.ready) ? 0.3 : 1,
           }}>
-            {me?.ready ? "✓ READY" : "READY UP"}
+            {me?.ready ? "✓ READY" : !myVote ? "VOTE TO UNLOCK" : "READY UP"}
+          </button>
+          <button onClick={() => setShowLeaveConfirm(true)} style={{
+            marginTop: 12, background: "transparent",
+            border: "1px solid #2a2a2a", color: "#555",
+            fontSize: 10, letterSpacing: 4, padding: "10px 0", width: "100%",
+            fontFamily: "'JetBrains Mono',monospace", cursor: "pointer",
+            transition: "border-color 0.15s, color 0.15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#e8b84b"; e.currentTarget.style.borderColor = "#e8b84b"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#555"; e.currentTarget.style.borderColor = "#2a2a2a"; }}
+          >
+            ← {isHost1v1 ? "CLOSE ROOM" : "LEAVE ROOM"}
           </button>
         </div>
       </main>
@@ -567,7 +786,13 @@ export default function GameRoom({ code }) {
             </div>
           </div>
         )}
-        <div style={{ fontSize: 9, letterSpacing: 3, color: "#2a2a2a" }}>{code}</div>
+        <div style={{ textAlign: "right" }}>
+          {room?.difficulty && (() => {
+            const meta = { easy: { label: "EASY", color: "#6bffb8" }, medium: { label: "MEDIUM", color: "#e8b84b" }, hard: { label: "HARD", color: "#ff6b6b" } }[room.difficulty];
+            return <div style={{ fontSize: 9, letterSpacing: 3, color: meta.color, border: `1px solid ${meta.color}33`, padding: "2px 8px", display: "inline-block" }}>{meta.label}</div>;
+          })()}
+          <div style={{ fontSize: 8, letterSpacing: 2, color: "#1e1e1e", marginTop: 3 }}>{code}</div>
+        </div>
       </div>
 
       {isDeathMatch ? (
