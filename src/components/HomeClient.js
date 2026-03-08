@@ -418,7 +418,7 @@ export default function Home() {
           fontSize: 9, letterSpacing: "0.3em",
           color: "#fff", userSelect: "none", whiteSpace: "nowrap",
         }}>
-          CRAFTED BY <span style={{ color: "#e8b84b", opacity: 0.9 }}>DEN</span> · BSIT · THE LEWIS COLLEGE
+          CRAFTED BY <span style={{ color: "#e8b84b", opacity: 0.9 }}>DEN</span>
         </span>
         <div style={{ width: 24, height: "1px", background: "#2a2a2a" }} />
       </div>
