@@ -126,52 +126,8 @@ function AnimatedBackground() {
     resize();
     window.addEventListener("resize", resize);
 
-    const WORD_POOL = [...WORDS_EASY, ...WORDS_MEDIUM,
-      "blur","freeze","ghost","bomb","quake","rewind",
-      "attack","speed","type","wpm","race","win","charge","fire",
-    ];
     const ACCENT = ["#e8b84b","#6ee7f7","#ff6b6b","#6bffb8"];
     const BIG_WORDS = ["TYPE","FAST","WIN","ATTACK","SPEED","WPM","RACE","FIGHT","FIRE","⚡"];
-
-    // ── SVG icon definitions (ionicons-style stroked paths) ──
-    const makeSVG = (path, color, size = 24) =>
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-
-    const ICON_PATHS = [
-      // Eye (blind)
-      `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`,
-      // Lightning bolt (quake)
-      `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`,
-      // Ghost
-      `<path d="M9 10h.01M15 10h.01"/><path d="M12 2a7 7 0 0 1 7 7v9l-2-2-2 2-2-2-2 2-2-2-2 2V9a7 7 0 0 1 7-7z"/>`,
-      // Snowflake (freeze)
-      `<line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="4.93" y2="19.07"/><circle cx="12" cy="12" r="2"/>`,
-      // Refresh/rewind arrows
-      `<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>`,
-      // Bomb
-      `<circle cx="11" cy="13" r="7"/><path d="M14.35 4.65L16 3"/><line x1="18" y1="2" x2="22" y2="6"/><line x1="16" y1="6" x2="20" y2="2"/>`,
-      // Skull (terror)
-      `<circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v-2h8v2"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1 4.5-2.5 6H7.5C6 15.5 5 13.5 5 9a7 7 0 0 1 7-7z"/>`,
-    ];
-
-    // Preload one Image per icon × accent color combo
-    const iconImages = [];
-    let loadedCount = 0;
-    const totalIcons = ICON_PATHS.length * ACCENT.length;
-
-    ICON_PATHS.forEach((path, pi) => {
-      ACCENT.forEach((color, ci) => {
-        const svgStr = makeSVG(path, color, 64);
-        const blob = new Blob([svgStr], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const img = new window.Image();
-        img.onload = () => { loadedCount++; URL.revokeObjectURL(url); };
-        img.src = url;
-        iconImages.push({ img, pathIdx: pi, colorIdx: ci });
-      });
-    });
-
-
 
     // Giant ghost words drifting across background
     const bigs = Array.from({ length: 4 }, (_, i) => ({
@@ -183,18 +139,6 @@ function AnimatedBackground() {
       pulse: Math.random() * Math.PI * 2,
       color: ACCENT[Math.floor(Math.random() * ACCENT.length)],
       vx: (Math.random() - 0.5) * 0.09,
-    }));
-
-    // Floating SVG icons
-    const icons = Array.from({ length: 10 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      imgIdx: Math.floor(Math.random() * (ICON_PATHS.length * ACCENT.length)),
-      targetAlpha: 0.14 + Math.random() * 0.18,
-      size: 28 + Math.random() * 38,
-      vx: (Math.random() - 0.5) * 0.28,
-      vy: (Math.random() - 0.5) * 0.28,
-      pulse: Math.random() * Math.PI * 2,
     }));
 
     // Glitch lines
@@ -216,24 +160,6 @@ function AnimatedBackground() {
         ctx.fillStyle = b.color;
         ctx.fillText(b.word, b.x, b.y);
       });
-
-
-
-      // Floating SVG icons
-      if (loadedCount > 0) {
-        icons.forEach(ic => {
-          ic.x += ic.vx; ic.y += ic.vy;
-          ic.pulse += 0.014;
-          const a = ic.targetAlpha * (0.6 + 0.4 * Math.sin(ic.pulse));
-          if (ic.x < -80 || ic.x > canvas.width + 80) ic.vx *= -1;
-          if (ic.y < -80 || ic.y > canvas.height + 80) ic.vy *= -1;
-          const entry = iconImages[ic.imgIdx];
-          if (entry && entry.img.complete && entry.img.naturalWidth > 0) {
-            ctx.globalAlpha = a;
-            ctx.drawImage(entry.img, ic.x - ic.size / 2, ic.y - ic.size / 2, ic.size, ic.size);
-          }
-        });
-      }
 
       // Glitch lines
       glitchTimer--;
@@ -382,7 +308,7 @@ export default function Home() {
               }}
             >💀 DEATHMATCH</button>
           </div>
-          <p style={{ color: "#fff", fontSize: 9, letterSpacing: 3, marginTop: 8, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}>
+          <p style={{ color: "#e8e0c8", fontSize: 9, letterSpacing: 3, marginTop: 8, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}>
             {mode === "1v1"
               ? "2 PLAYERS · 60s RACE · MOST WORDS WINS"
               : "2–5 PLAYERS · FIRST TO 50 WORDS WINS · ATTACKS HIT ALL"}
